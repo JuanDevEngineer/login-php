@@ -1,0 +1,28 @@
+# Evita que se ejecute código del lado del servidor dentro de uploads/.
+# Cualquier archivo subido se servirá como estático, nunca interpretado.
+
+# Apache 2.4+: interpretación PHP desactivada.
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+# Bloquea extensiones ejecutables por si acaso.
+<FilesMatch "\.(php|phtml|phar|phps|pht|py|pl|cgi|sh|asp|aspx|js|exe)$">
+    Require all denied
+</FilesMatch>
+
+# Sólo imágenes "sanas" aceptadas (doble defensa).
+<FilesMatch "\.(jpg|jpeg|png|gif|webp)$">
+    Require all granted
+</FilesMatch>
+
+# Por si el servidor intentara evaluar el directorio como script.
+Options -ExecCGI -Indexes
+RemoveHandler .php .phtml .phar .phps
+RemoveType .php .phtml .phar .phps

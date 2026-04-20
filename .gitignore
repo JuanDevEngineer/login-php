@@ -1,1 +1,6 @@
 php-error.log
+
+composer.phar
+vendor/
+
+.env

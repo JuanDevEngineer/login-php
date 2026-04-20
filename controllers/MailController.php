@@ -18,9 +18,9 @@ class MailController {
             $mail::CHARSET_UTF8;
             
             $mail->SMTPAuth   = true; // Enable SMTP authentication
-            $mail->Host       = "smtp.gmail.com"; // Set the SMTP server to send through
-            $mail->Username   = "restrepojuanjose8@gmail.com"; // SMTP username
-            $mail->Password   = "99Juan99Jose";
+            $mail->Host       = ""; // Set the SMTP server to send through
+            $mail->Username   = ""; // SMTP username
+            $mail->Password   = "";
 
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port       = 587;
