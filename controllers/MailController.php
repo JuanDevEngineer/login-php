@@ -15,18 +15,18 @@ class MailController {
         try {
             $mail = new PHPMailer(true);
             $mail->isSMTP();
-            $mail::CHARSET_UTF8;
-            
-            $mail->SMTPAuth   = true; // Enable SMTP authentication
-            $mail->Host       = "smtp.gmail.com"; // Set the SMTP server to send through
-            $mail->Username   = "restrepojuanjose8@gmail.com"; // SMTP username
-            $mail->Password   = "99Juan99Jose";
+            $mail->CharSet = PHPMailer::CHARSET_UTF8;
+
+            $mail->SMTPAuth   = true;
+            $mail->Host       = env('SMTP_HOST', 'smtp.gmail.com');
+            $mail->Username   = env('SMTP_USER', '');
+            $mail->Password   = env('SMTP_PASS', '');
 
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = 587;
+            $mail->Port       = (int) env('SMTP_PORT', 587);
 
-            //Recipients
-            $mail->setFrom(EMAIL_ADMIN, 'Admin');
+            // Recipients
+            $mail->setFrom(env('SMTP_FROM', EMAIL_ADMIN), 'Admin');
             $mail->addAddress($email);
 
 
@@ -41,10 +41,12 @@ class MailController {
                     "message" => "correo enviado"
                 );
             }
+            return array("error" => "No se pudo enviar el correo.");
 
         } catch (Exception $e) {
+            error_log("Mail error: " . $e->getMessage());
             return array(
-                "error" => "Error: {$mail->ErrorInfo}"
+                "error" => "Error enviando correo."
             );
         }
     }

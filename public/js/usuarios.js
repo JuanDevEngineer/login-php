@@ -1,106 +1,109 @@
-const URL = "/proyectos-juan/login-php"
-const URL2 = "/login-php"
+// URL base: se lee del atributo data-base-url del <body>
+const URL = document.body.dataset.baseUrl || "";
+
+function csrf(form) {
+    return $(form).find('input[name="csrf_token"]').val() || $('meta[name="csrf-token"]').attr('content') || "";
+}
 
 $(document).ready(function () {
-    mostrarUsuarioForm()
-    roles()
-})    
+    // Sólo poblamos los selects si la vista los contiene (gestor de usuarios).
+    if ($("#usuarioselect").length) { mostrarUsuarioForm(); }
+    if ($("#rolnuevo").length)      { roles(); }
+});
 
 // eventos
 $("#mostrarUsuarios").on("click", function (event) {
-    let user_id = $("#usuarioselect").val();
-    let estado = $("#estado").val();
+    const user_id = $("#usuarioselect").val();
+    const estado = $("#estado").val();
     event.preventDefault();
     $(".usuario").show();
     listarUsuarios(user_id, estado);
-})
+});
 
 $("#actualizarusuario").on("submit", function (event) {
-    event.preventDefault()
-    const id_usuario = $('#id_u').val()
-    const username = $("#name").val()
-    const email = $("#email").val()
-    const rol = $("#rolnuevo").val()
+    event.preventDefault();
+    const id_usuario = $('#id_u').val();
+    const username = $("#name").val();
+    const email = $("#email").val();
+    const rol = $("#rolnuevo").val();
+    const token = csrf(this);
 
-    if(username.trim() === '' || email.trim() === '' || rol.trim() === '') {
+    if (username.trim() === '' || email.trim() === '' || rol.trim() === '') {
         $.alert({
             title: 'Campos',
-            content: 'Hay campos vacios'
+            content: 'Hay campos vacíos'
         });
-        // toastr.danger('los campos estan vacios')
-        return false
-    } else {
-        $.confirm({
-            title: 'Actualizar!',
-            content: 'desea actualizar el usuario!',
-            type: 'dark',
-            buttons: {
-                confirm: function () {
-                    $.ajax({
-                        type: 'POST',
-                        dataType: 'json',
-                        url: `${URL}/Gestor/updateUser`,
-                        data: {
-                            id_usuario: id_usuario,
-                            username: username,
-                            email: email,
-                            rol: rol,
-                        },
-                        success: function(response) {
-                            console.log(response);
-                            if(response.success) {
-                                $("#modal-editar").modal("hide")
-                                listarUsuarios()
-                            }
-                        }
-                    })
-
-                    $.alert({
-                        title: 'Usuario',
-                        content: 'Usuario actaulizado'
-                    });
-                }, 
-                cancel: function() {
-
-                }
-            }
-        });
+        return false;
     }
 
-})
+    $.confirm({
+        title: '¡Actualizar!',
+        content: '¿Desea actualizar el usuario?',
+        type: 'dark',
+        buttons: {
+            confirm: function () {
+                $.ajax({
+                    type: 'POST',
+                    dataType: 'json',
+                    url: `${URL}/Gestor/updateUser`,
+                    data: {
+                        id_usuario: id_usuario,
+                        username: username,
+                        email: email,
+                        rol: rol,
+                        csrf_token: token,
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            $("#modal-editar").modal("hide");
+                            listarUsuarios();
+                            $.alert({ title: 'Usuario', content: 'Usuario actualizado' });
+                        } else {
+                            $.alert({ title: 'Error', content: response.msg || 'No se pudo actualizar' });
+                        }
+                    }
+                });
+            },
+            cancel: function () { }
+        }
+    });
+});
 
 $("#subirimagen").on("submit", function (event) {
-    event.preventDefault()
-    const image = $("#image-rol").get(0).files[0]
-    const id_usuario = $('#id_k').val()
-    const data = new FormData()
-    data.append("profile", image)
-    data.append("id_usuario", id_usuario)
+    event.preventDefault();
+    const image = $("#image-rol").get(0).files[0];
+    const id_usuario = $('#id_k').val();
+    const token = csrf(this);
+    const data = new FormData();
+    data.append("profile", image);
+    data.append("id_usuario", id_usuario);
+    data.append("csrf_token", token);
     $.ajax({
-        url:`${URL}/Gestor/uploadImageProfile`,
+        url: `${URL}/Gestor/uploadImageProfile`,
         type: 'POST',
         data: data,
         processData: false,
         contentType: false,
         cache: false,
         success: function (response) {
-            if(response.success) {
+            if (response.success) {
                 $.alert({
                     title: 'Perfil',
-                    content: 'Imagen actualizada, cierra sesion e ingresa nuevamente',
+                    content: 'Imagen actualizada, cierra sesión e ingresa nuevamente',
                     type: 'dark'
                 });
+            } else {
+                $.alert({ title: 'Error', content: response.msg || 'Error' });
             }
         }
-
-    })
-})
+    });
+});
 
 
 // funciones
 function mostrarUsuarioForm() {
     $.get(`${URL}/Gestor/getName`, function (response) {
-        let data = JSON.parse(response);
+        const data = JSON.parse(response);
         $.each(data, function (index, result) {
             $("#usuarioselect").append(
                 '<option value="' + result.id_usuario + '">' + result.username + "</option>"
@@ -119,6 +122,7 @@ function listarUsuarios(id, estado) {
                 data: {
                     id: id,
                     estado: estado,
+                    csrf_token: $('meta[name="csrf-token"]').attr('content') || "",
                 },
                 dataSrc: ""
             },
@@ -159,8 +163,7 @@ function listarUsuarios(id, estado) {
                     targets: 4,
                     data: 'estado',
                     render: function (data, type, row) {
-
-                        if(row["estado"] == 0) {
+                        if (row["estado"] == 0) {
                             return (
                                 `<span id="ii" class="usuario-er" onclick="estado(${row['id_usuario']}, ${data})">
                                     <i class="fas fa-times-circle" ></i>
@@ -175,7 +178,6 @@ function listarUsuarios(id, estado) {
                         }
                     }
                 },
-
                 {
                     targets: 5,
                     data: '',
@@ -199,7 +201,7 @@ function listarUsuarios(id, estado) {
 
 function roles() {
     $.get(`${URL}/Gestor/getRol`, function (response) {
-        let data = JSON.parse(response);
+        const data = JSON.parse(response);
         $.each(data, function (index, result) {
             $("#rolnuevo").append(
                 '<option value="' + result.id_rol + '">' + result.rol_usuario + "</option>"
@@ -209,31 +211,30 @@ function roles() {
 }
 
 function ver(id) {
-    $("#modal-editar").modal("show")
+    $("#modal-editar").modal("show");
     $.ajax({
         type: 'POST',
         dataType: 'json',
         url: `${URL}/Gestor/getUser`,
         data: {
-            id: id
+            id: id,
+            csrf_token: $('meta[name="csrf-token"]').attr('content') || "",
         },
-        success: function(response) {
-            const id = $('#id_u').val(response.id_usuario)
-            const username = $("#name").val(response.username)
-            const email = $("#email").val(response.email)
-            const rol = $("#rol").val(response.rol_usuario)
-            const estado =  $("#estadou").val(response.estado)
-            const fcreacion = $("#fcreacion").val(response.registro)
-
+        success: function (response) {
+            $('#id_u').val(response.id_usuario);
+            $("#name").val(response.username);
+            $("#email").val(response.email);
+            $("#rol").val(response.rol_usuario);
+            $("#estadou").val(response.estado);
+            $("#fcreacion").val(response.registro);
         }
-    })
+    });
 }
 
 function estado(id, estado) {
-
     $.confirm({
         title: 'Estado',
-        content: 'Desea Cambiar el estado!',
+        content: '¿Desea cambiar el estado?',
         type: 'dark',
         buttons: {
             confirm: function () {
@@ -243,25 +244,19 @@ function estado(id, estado) {
                     url: `${URL}/Gestor/updataState`,
                     data: {
                         id: id,
-                        estado: estado
+                        estado: estado,
+                        csrf_token: $('meta[name="csrf-token"]').attr('content') || "",
                     },
-                    success: function(response) {
-                        if(response.success) {
-                            listarUsuarios()
+                    success: function (response) {
+                        if (response.success) {
+                            listarUsuarios();
                         }
                     }
-                })
-
-                $.alert({
-                    title: 'Estado',
-                    content: 'Estado Actualizado'
                 });
-            }, 
-            cancel: function() {
-                
-            }
+
+                $.alert({ title: 'Estado', content: 'Estado Actualizado' });
+            },
+            cancel: function () { }
         }
     });
-
-
 }

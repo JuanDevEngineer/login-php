@@ -1,7 +1,7 @@
     <!-- Main Sidebar Container -->
     <aside class="main-sidebar sidebar-dark-primary elevation-4">
         <!-- Brand Logo -->
-        <a href="index2.html" class="brand-link">
+        <a href="#" class="brand-link">
             <img src="<?php echo BASE_URL?>/assets/admin/dist/img/AdminLTELogo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
             <span class="brand-text font-weight-light">LOGIN</span>
         </a>
@@ -12,13 +12,13 @@
             <div class="user-panel mt-3 pb-3 mb-3 d-flex">
                 <div class="image">
                     <?php if(isset($_SESSION['image'])): ?>
-                        <img src="<?php echo $_SESSION['image']; ?>" class="img-circle elevation-2" alt="User Image">
+                        <img src="<?php echo e($_SESSION['image']); ?>" class="img-circle elevation-2" alt="User Image">
                     <?php else: ?>
-                        <img src="<?php echo BASE_URL?>/assets/admin/dist/img/user2-160x160.jpg" class="img-circle elevation-2" alt="User Image">
+                        <img src="<?php echo e(BASE_URL)?>/assets/admin/dist/img/user2-160x160.jpg" class="img-circle elevation-2" alt="User Image">
                     <?php endif; ?>
                 </div>
                 <div class="info">
-                    <a href="<?php echo BASE_URL?>/Admin/perfil" class="d-block" id="usuario"><?php echo $_SESSION['email']; ?></a>
+                    <a href="<?php echo e(BASE_URL)?>/Admin/perfil" class="d-block" id="usuario"><?php echo e($_SESSION['email'] ?? ''); ?></a>
                 </div>
             </div>
 
@@ -293,18 +293,18 @@
                                     <p>Gestor de usuarios</p>
                                 </a>
                             </li>
-                            <li class="nav-item">
+                            <!-- <li class="nav-item">
                                 <a href="<?php echo BASE_URL; ?>/Admin/editar" class="nav-link">
                                     <i class="far fa-circle nav-icon"></i>
                                     <p>Editar usuarios</p>
                                 </a>
-                            </li>
+                            </li> -->
                         </ul>
                     </li>
                     <!-- / Registro de usuarios -->
 
                     <!-- PRODUCTOS --> 
-                    <li class="nav-item has-treeview">
+                    <!-- <li class="nav-item has-treeview">
                         <a href="#" class="nav-link">
                             <i class="nav-icon fab fa-canadian-maple-leaf"></i>
                             <p>
@@ -326,10 +326,10 @@
                                 </a>
                             </li>
                         </ul>
-                    </li>
+                    </li> -->
 
                     <!-- CATEGORIAS --> 
-                    <li class="nav-item has-treeview">
+                    <!-- <li class="nav-item has-treeview">
                         <a href="#" class="nav-link">
                             <i class="nav-icon fab fa-canadian-maple-leaf"></i>
                             <p>
@@ -351,10 +351,10 @@
                                 </a>
                             </li>
                         </ul>
-                    </li>
+                    </li> -->
 
                     <!-- PAGOS --> 
-                    <li class="nav-item has-treeview">
+                    <!-- <li class="nav-item has-treeview">
                         <a href="#" class="nav-link">
                             <i class="nav-icon fab fa-canadian-maple-leaf"></i>
                             <p>
@@ -376,11 +376,11 @@
                                 </a>
                             </li>
                         </ul>
-                    </li>
+                    </li> -->
                     <!-- / -->
                     
                     <!-- -->
-                    <li class="nav-item has-treeview">
+                    <!-- <li class="nav-item has-treeview">
                         <a href="#" class="nav-link">
                             <i class="nav-icon far fa-plus-square"></i>
                             <p>
@@ -462,17 +462,16 @@
                                 </a>
                             </li>
                         </ul>
-                    </li>
+                    </li> -->
                     <!-- / -->
                     
-
-                    <li class="nav-header">MISCELLANEOUS</li>
+                    <!-- <li class="nav-header">MISCELLANEOUS</li>
                     <li class="nav-item">
                         <a href="https://adminlte.io/docs/3.0" class="nav-link">
                             <i class="nav-icon fas fa-file"></i>
                             <p>Documentation</p>
                         </a>
-                    </li>
+                    </li> -->
 
                     <!-- <li class="nav-header">MULTI LEVEL EXAMPLE</li>
                     <li class="nav-item">

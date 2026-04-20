@@ -1,1 +1,5 @@
 php-error.log
+/assets/uploads
+.env
+.env.local
+/vendor

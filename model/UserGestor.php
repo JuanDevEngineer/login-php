@@ -33,23 +33,23 @@ class UserGestor extends Model
     public function getUser($id)
     {
         try {
-
-            $sql = "SELECT 
-                    u.id_usuario, 
-                    u.username, 
+            $sql = "SELECT
+                    u.id_usuario,
+                    u.username,
                     u.email,
                     u.rol_id,
                     CASE
                         WHEN u.estado = 1 THEN 'activo'
                         ELSE 'inactivo'
-                    END as estado, 
+                    END as estado,
                     r.nombre as 'rol_usuario',
                     u.registro
                     FROM usuario u
                     INNER JOIN rol r ON r.id_rol = u.rol_id
-                    WHERE u.id_usuario = $id";
+                    WHERE u.id_usuario = :id";
 
             $stmt = $this->con->getConnection()->prepare($sql);
+            $stmt->bindValue(":id", (int) $id, PDO::PARAM_INT);
             if ($stmt->execute()) {
                 if ($stmt->rowCount() > 0) {
                     return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -58,8 +58,9 @@ class UserGestor extends Model
                 }
             }
         } catch (PDOException $th) {
+            error_log("getUser error: " . $th->getMessage());
             return array(
-                'error' => $th->getMessage()
+                'error' => 'Error consultando usuario.'
             );
         }
     }
@@ -67,28 +68,35 @@ class UserGestor extends Model
     public function getUsers($id, $estado)
     {
         try {
-            $condicion = "";
+            $condiciones = [];
+            $params = [];
 
-            if ($id != "") {
-                $condicion .= " WHERE u.id_usuario = '$id'";
+            if ($id !== "" && $id !== null) {
+                $condiciones[] = "u.id_usuario = :id";
+                $params[':id'] = (int) $id;
             }
 
-            if ($estado != "") {
-                $condicion .= " AND u.estado = $estado";
+            if ($estado !== "" && $estado !== null) {
+                $condiciones[] = "u.estado = :estado";
+                $params[':estado'] = (int) $estado;
             }
 
-            $sql = "SELECT 
-                    u.id_usuario, 
-                    u.username, 
+            $where = $condiciones ? ' WHERE ' . implode(' AND ', $condiciones) : '';
+
+            $sql = "SELECT
+                    u.id_usuario,
+                    u.username,
                     u.email,
-                    u.rol_id, 
-                    u.estado, 
-                    r.nombre as 'rol_usuario' 
+                    u.rol_id,
+                    u.estado,
+                    r.nombre as 'rol_usuario'
                     FROM usuario u
-                    INNER JOIN rol r ON r.id_rol = u.rol_id" . $condicion . "";
+                    INNER JOIN rol r ON r.id_rol = u.rol_id" . $where;
 
-            // echo $sql;exit;
             $stmt = $this->con->getConnection()->prepare($sql);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_INT);
+            }
 
             if ($stmt->execute()) {
                 if ($stmt->rowCount() > 0) {
@@ -98,55 +106,46 @@ class UserGestor extends Model
                 }
             }
         } catch (PDOException $th) {
+            error_log("getUsers error: " . $th->getMessage());
             return array(
-                'error' => $th->getMessage()
+                'error' => 'Error consultando usuarios.'
             );
         }
     }
 
-    public function updateUser($data) 
+    public function updateUser($data)
     {
         try {
+            $sql = "UPDATE usuario
+                    SET username = :username,
+                        email = :email,
+                        rol_id = :rol_id
+                    WHERE id_usuario = :id";
 
-            if(!$this->validate('email', $data['email']) || !$this->validate('username', $data['username'])) {
-                
-                $sql = "UPDATE usuario
-                        SET username = :username,
-                            email = :email,
-                            rol_id = :rol_id
-                        WHERE id_usuario = :id";           
-            
+            $stmt = $this->con->getConnection()->prepare($sql);
+            $stmt->bindValue(":username", $data['username'], PDO::PARAM_STR);
+            $stmt->bindValue(":email", $data['email'], PDO::PARAM_STR);
+            $stmt->bindValue(":rol_id", (int) $data['rol'], PDO::PARAM_INT);
+            $stmt->bindValue(":id", (int) $data['id_usuario'], PDO::PARAM_INT);
 
-                // echo $sql;exit;
-                $stmt = $this->con->getConnection()->prepare($sql);
-                $stmt->bindParam(":username", $data['username'], PDO::PARAM_STR);
-                $stmt->bindParam(":email", $data['email'], PDO::PARAM_STR);
-                $stmt->bindParam(":rol_id", $data['rol'], PDO::PARAM_INT);
-                $stmt->bindParam(":id", $data['id_usuario'], PDO::PARAM_INT);
-
-                if ($stmt->execute()) {
-                    if ($stmt->rowCount() > 0) {
-                        return array(
-                            'success' => true,
-                            'msg' => 'usuario editado'
-                        );
-                    } else {
-                        return array(
-                            'success' => false,
-                            'msg' => 'error al editar'
-                        );
-                    }
+            if ($stmt->execute()) {
+                if ($stmt->rowCount() > 0) {
+                    return array(
+                        'success' => true,
+                        'msg' => 'usuario editado'
+                    );
+                } else {
+                    return array(
+                        'success' => false,
+                        'msg' => 'sin cambios'
+                    );
                 }
-            }else {
-                return array(
-                    "success" => false,
-                    "msg" => 'el correo o usuario ya existe, intenta con otro diferente!'
-                );
             }
         } catch (PDOException $th) {
+            error_log("updateUser error: " . $th->getMessage());
             return array(
                 'success' => false,
-                'error' => $th->getMessage()
+                'error' => 'Error actualizando usuario.'
             );
         }
     }
@@ -179,42 +178,35 @@ class UserGestor extends Model
     public function updataState($id, $estado)
     {
         try {
-            $sql = "";
-            if($estado == 0) {
-                $sql .= "UPDATE usuario
-                        SET estado = 1
-                        WHERE id_usuario = :id";           
-            }
-            
-            if($estado == 1) {
-                $sql .= "UPDATE usuario
-                        SET estado = 0
-                        WHERE id_usuario = :id";
+            $estadoInt = (int) $estado;
+            if ($estadoInt !== 0 && $estadoInt !== 1) {
+                return array('error' => 'estado inválido');
             }
 
-            // echo $sql;exit;
+            // Invertir el estado actual
+            $nuevo = $estadoInt === 0 ? 1 : 0;
+
+            $sql = "UPDATE usuario SET estado = :nuevo WHERE id_usuario = :id";
             $stmt = $this->con->getConnection()->prepare($sql);
-            $stmt->bindParam(":id", $id, PDO::PARAM_INT);
+            $stmt->bindValue(":id", (int) $id, PDO::PARAM_INT);
+            $stmt->bindValue(":nuevo", $nuevo, PDO::PARAM_INT);
 
             if ($stmt->execute()) {
                 if ($stmt->rowCount() > 0) {
-                    return array(
-                        'success' => true
-                    );
+                    return array('success' => true);
                 } else {
-                    return array(
-                        'error' => 'error'
-                    );
+                    return array('error' => 'sin cambios');
                 }
             }
         } catch (PDOException $th) {
+            error_log("updataState error: " . $th->getMessage());
             return array(
-                'error' => $th->getMessage()
+                'error' => 'Error actualizando estado.'
             );
         }
     }
 
-    public function uploadNameImage($data) 
+    public function uploadNameImage($data)
     {
         try {
             $sql = "UPDATE usuario
@@ -222,8 +214,8 @@ class UserGestor extends Model
                     WHERE id_usuario = :id";
 
             $stmt = $this->con->getConnection()->prepare($sql);
-            $stmt->bindParam(":imagen", $data['imagen_url'], PDO::PARAM_STR);
-            $stmt->bindParam(":id", $data['id_usuario'], PDO::PARAM_INT);
+            $stmt->bindValue(":imagen", $data['imagen_url'], PDO::PARAM_STR);
+            $stmt->bindValue(":id", (int) $data['id_usuario'], PDO::PARAM_INT);
 
             if ($stmt->execute()) {
                 if ($stmt->rowCount() > 0) {
@@ -232,16 +224,13 @@ class UserGestor extends Model
                         'message' => 'vuelve a iniciar sesion!'
                     );
                 } else {
-                    return array(
-                        'error' => 'error'
-                    );
+                    return array('error' => 'sin cambios');
                 }
             }
-
-
         } catch (PDOException $th) {
+            error_log("uploadNameImage error: " . $th->getMessage());
             return array(
-                'error' => $th->getMessage()
+                'error' => 'Error guardando la imagen.'
             );
         }
     }

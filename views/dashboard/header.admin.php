@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 
     <title>Login / <?php echo paginaActual(); ?></title>
 
@@ -30,7 +31,7 @@
     <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
 </head>
 
-<body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed layout-footer-fixed">
+<body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed layout-footer-fixed" data-base-url="<?php echo e(BASE_URL); ?>">
     <div class="wrapper">
 
         <?php 
@@ -155,10 +156,10 @@
                         <i class="fas fa-archway"></i>
                     </a>
                     <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
-                        <span class="dropdown-item dropdown-header">Bienvenido <?php echo isset($_SESSION['usuario']) ?  $_SESSION['usuario'] : ''; ?>!</span>
+                        <span class="dropdown-item dropdown-header">Bienvenido <?php echo e($_SESSION['usuario'] ?? ''); ?>!</span>
                         <div class="dropdown-divider"></div>
                         <a href="#" class="dropdown-item ">
-                            <a href="<?php echo BASE_URL; ?>/App/logout" class="nav-link text-center"><i class="fas fa-power-off"></i> Cerrar sesion</a>
+                            <a href="<?php echo e(BASE_URL); ?>/App/logout" class="nav-link text-center"><i class="fas fa-power-off"></i> Cerrar sesion</a>
                     </div>
                 </li>
                 <!-- <li class="nav-item dropdown">

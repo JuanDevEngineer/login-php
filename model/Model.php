@@ -18,13 +18,10 @@ class Model
 
     protected function generateRandomString($length = 50)
     {
-        $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $charactersLength = strlen($characters);
-        $randomString = '';
-        for ($i = 0; $i < $length; $i++) {
-            $randomString .= $characters[rand(0, $charactersLength - 3)];
-        }
-        return $randomString;
+        // random_bytes() es criptográficamente seguro. bin2hex duplica la longitud,
+        // por eso pedimos la mitad de bytes.
+        $bytes = random_bytes((int) ceil($length / 2));
+        return substr(bin2hex($bytes), 0, $length);
     }
 
     public function validate($dato, $value)

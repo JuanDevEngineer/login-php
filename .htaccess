@@ -1,12 +1,64 @@
+# ---------------------------------------------------------------------
+# Rewriting: enruta todo a index.php (patrón front-controller).
+# ---------------------------------------------------------------------
 <IfModule mod_rewrite.c>
-    # Activar rewrite
     RewriteEngine on
-    # ErrorDocument 404 http://localhost/master-php/proyecto-php-poo/error/formerror
 
-    # Options -Indexes
-
+    # No reescribir recursos existentes (imágenes, css, js, uploads...).
     RewriteCond %{SCRIPT_FILENAME} !-d
     RewriteCond %{SCRIPT_FILENAME} !-f
 
+    # Enruta `/Controller/accion` → index.php?controller=Controller&action=accion
     RewriteRule ^(.*)/(.*) index.php?controller=$1&action=$2 [QSA,L]
 </IfModule>
+
+# ---------------------------------------------------------------------
+# Endurecer listado de directorios.
+# ---------------------------------------------------------------------
+Options -Indexes
+
+# ---------------------------------------------------------------------
+# Cabeceras de seguridad.
+# ---------------------------------------------------------------------
+<IfModule mod_headers.c>
+    # Protege contra clickjacking.
+    Header always set X-Frame-Options "DENY"
+
+    # Evita MIME sniffing.
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Política de referer mínima.
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Política de permisos (sin acceso a APIs sensibles del navegador).
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+
+    # CSP ajustada a los CDN que ya usa el proyecto (bootstrap, fontawesome,
+    # datatables, jquery-confirm, google fonts y toastr local).
+    # Header always set Content-Security-Policy "default-src 'self'; \
+        script-src  'self' 'unsafe-inline' https://stackpath.bootstrapcdn.com https://cdnjs.cloudflare.com https://cdn.datatables.net; \
+        style-src   'self' 'unsafe-inline' https://stackpath.bootstrapcdn.com https://cdnjs.cloudflare.com https://cdn.datatables.net https://use.fontawesome.com https://fonts.googleapis.com; \
+        font-src    'self' https://use.fontawesome.com https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; \
+        img-src     'self' data: blob:; \
+        connect-src 'self'; \
+        frame-ancestors 'none'; \
+        base-uri 'self'; \
+        form-action 'self';"
+
+    # HSTS — sólo activar detrás de HTTPS. Descomentar tras servir con TLS.
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+</IfModule>
+
+# ---------------------------------------------------------------------
+# Bloquear acceso directo a archivos sensibles.
+# ---------------------------------------------------------------------
+<FilesMatch "^(\.env(\..*)?|\.gitignore|composer\.(json|lock)|mydb\.sql|REPORTE_ESCANEO\.md|README\.md)$">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(log|ini|conf|bak|sql|md)$">
+    Require all denied
+</FilesMatch>
+
+# Bloquea navegación a carpetas internas del framework.
+RedirectMatch 404 ^/(helpers|model|controllers|config|libs)(/|$)

@@ -57,67 +57,55 @@ class User extends Model
   }
 
   /**
-   * @param string user
+   * Comprueba si ya existe un usuario con ese username (exacto, case-sensitive).
    */
   private function validateUser($user)
   {
-
-    $sql = "SELECT * FROM usuario WHERE username LIKE BINARY :username";
+    $sql = "SELECT 1 FROM usuario WHERE username = BINARY :username LIMIT 1";
     $stmt = $this->con->getConnection()->prepare($sql);
-
-    $user = "%" . $user . "%";
-    $stmt->bindParam(":username", $user, PDO::PARAM_STR);
+    $stmt->bindValue(":username", $user, PDO::PARAM_STR);
 
     if ($stmt->execute()) {
-      // var_dump($stmt->rowCount());
-      if ($stmt->rowCount() > 0) {
-        return true;
-      } else {
-        return false;
-      }
-    } else {
-      die("error al realizar la ejecucion");
+      return $stmt->rowCount() > 0;
     }
+    return false;
   }
 
   public function validateKey($key)
   {
-    $sql = "SELECT id_usuario FROM usuario WHERE recover = :key";
+    // Buscamos cualquier token que empiece por la key (prefijo)
+    // y dentro comprobamos la expiración.
+    $sql  = "SELECT id_usuario, recover FROM usuario WHERE recover LIKE :prefix";
     $stmt = $this->con->getConnection()->prepare($sql);
+    $prefix = $key . '|%';
+    $stmt->bindValue(":prefix", $prefix, PDO::PARAM_STR);
 
-    $stmt->bindParam(":key", $key, PDO::PARAM_STR);
-
-    if ($stmt->execute()) {
-      // var_dump($stmt->rowCount());
-      if ($stmt->rowCount() > 0) {
-        return true;
-      } else {
-        return false;
-      }
-    } else {
-      die("error al realizar la ejecucion");
+    if (!$stmt->execute() || $stmt->rowCount() === 0) {
+      return false;
     }
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $parts = explode('|', $row['recover']);
+    if (count($parts) !== 2) {
+      return false;
+    }
+    [$storedKey, $expires] = $parts;
+    if (!hash_equals($storedKey, $key)) {
+      return false;
+    }
+    return time() < (int) $expires;
   }
 
   public function getId($key)
   {
-    $response = array();
-
-    $sql = "SELECT id_usuario FROM usuario WHERE recover = :key";
+    $sql  = "SELECT id_usuario FROM usuario WHERE recover LIKE :prefix";
     $stmt = $this->con->getConnection()->prepare($sql);
-    $stmt->bindParam(":key", $key, PDO::PARAM_STR);
+    $stmt->bindValue(":prefix", $key . '|%', PDO::PARAM_STR);
 
-    if ($stmt->execute()) {
-      error_log("ejecucion->" . $stmt->execute());
-
-      if ($stmt->rowCount() > 0) {
-        $data = $stmt->fetch();
-        return $data;
-      } else {
-        $response['error'] = "error, internamente!";
-        return $response;
-      }
+    if ($stmt->execute() && $stmt->rowCount() > 0) {
+      return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+    return ['error' => 'clave no encontrada'];
   }
 
   public function getData($correo)
@@ -138,7 +126,7 @@ class User extends Model
         $response['status'] = true;
         return $response;
       } else {
-        $response['error'] = "eror, el correo enviado no existe";
+        $response['error'] = "error, usuario o password incorrecto";
         $response['status'] = false;
         return $response;
       }
@@ -161,15 +149,13 @@ class User extends Model
     $stmt = $this->con->getConnection()->prepare($sql);
 
     $stmt->bindParam(1, $username_usuario, PDO::PARAM_STR);
-    // $stmt->bindValue(2, $password_usuario, PDO::PARAM_STR);
 
     // validar la ejecucion
     if ($stmt->execute()) {
 
-      error_log("ejecucion->" . json_encode($sql));
-
       if ($stmt->rowCount() > 0) {
         $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
         if (password_verify($password_usuario, $data['password'])) {
           $response['data'] = $data;
           $response['status'] = true;
@@ -180,7 +166,7 @@ class User extends Model
           return $response;
         }
       } else {
-        $response['error'] = "El usuario ingresado no existe!";
+        $response['error'] = "usuario o password incorrecto!";
         $response['status'] = false;
         return $response;
       }
@@ -195,26 +181,33 @@ class User extends Model
   {
     $response = array();
     try {
-      if (!$this->validateUser($this->getusername())) {
+      if (!$this->validateUser($this->getUsername())) {
 
         $password_hash = $this->hashPassword($this->getPassword());
-        //realizamos la consulta el usuario
-        $sql = "INSERT INTO `usuario` (username, email, password, rol_id, registro) 
-                VALUES('{$this->getusername()}', '{$this->getEmail()}', '$password_hash', 2, CURDATE())";
+        $username = $this->getUsername();
+        $email    = $this->getEmail();
+
+        $sql = "INSERT INTO `usuario` (username, email, password, rol_id, registro)
+                VALUES(:username, :email, :password, 2, CURDATE())";
 
         $stmt = $this->con->getConnection()->prepare($sql);
+        $stmt->bindValue(":username", $username, PDO::PARAM_STR);
+        $stmt->bindValue(":email",    $email,    PDO::PARAM_STR);
+        $stmt->bindValue(":password", $password_hash, PDO::PARAM_STR);
 
-        // validar la ejecucion
         if ($stmt->execute()) {
           $response['success'] = "usuario registrado correctamente!";
           return $response;
         }
+        $response['error'] = "Error registrando usuario.";
+        return $response;
       } else {
-        $response['error'] = "El usuaio ya existe, intenta con otro diferente!";
+        $response['error'] = "El usuario ya existe, intenta con otro diferente!";
         return $response;
       }
     } catch (PDOException $e) {
-      echo "error" . $e->getMessage();
+      error_log("registrar error: " . $e->getMessage());
+      return ['error' => 'Error registrando usuario.'];
     }
   }
 
@@ -223,38 +216,37 @@ class User extends Model
     $email = $this->getEmail();
     $usuario = $this->getData($email);
 
-    if ($usuario) {
-
+    if ($usuario && !empty($usuario['status'])) {
       $key = $this->generateRandomString();
+      // Almacenamos key|expira_en_unix. Expiración: 30 min.
+      $expires = time() + (30 * 60);
+      $storedKey = $key . '|' . $expires;
 
-      $sql = "UPDATE usuario SET recover = '$key' ";
-      $sql .= "WHERE id_usuario=" . $usuario['data']['id_usuario'] . "";
-
-      error_log("recover->PASS: " . json_encode($sql));
-
-      $stmt = $this->con->getConnection()->query($sql);
+      $sql  = "UPDATE usuario SET recover = :key WHERE id_usuario = :id";
+      $stmt = $this->con->getConnection()->prepare($sql);
+      $stmt->bindValue(":key", $storedKey, PDO::PARAM_STR);
+      $stmt->bindValue(":id",  (int) $usuario['data']['id_usuario'], PDO::PARAM_INT);
 
       if ($stmt->execute()) {
         return $key;
       }
-    } else {
-      return $usuario['error'];
+      return null;
     }
+    return null;
   }
 
   public function UpdatePass()
   {
     try {
-      $id_user = $this->getIdUser();
+      $id_user = (int) $this->getIdUser();
       $password_new = $this->hashPassword($this->getPassword());
 
-      $sql = "UPDATE usuario SET  password = :password WHERE (id_usuario = :id)";
-
-      error_log("update contraseña ->" . json_encode($sql));
+      // Invalidar recover al cambiar la clave (uso único).
+      $sql = "UPDATE usuario SET password = :password, recover = NULL WHERE id_usuario = :id";
 
       $stmt = $this->con->getConnection()->prepare($sql);
-      $stmt->bindParam(":password", $password_new, PDO::PARAM_STR);
-      $stmt->bindParam(":id", $id_user, PDO::PARAM_INT);
+      $stmt->bindValue(":password", $password_new, PDO::PARAM_STR);
+      $stmt->bindValue(":id", $id_user, PDO::PARAM_INT);
 
       if ($stmt->execute()) {
         return [
@@ -268,15 +260,8 @@ class User extends Model
         ];
       }
     } catch (PDOException $e) {
-      return ["error" => $e->getMessage()];
+      error_log("UpdatePass error: " . $e->getMessage());
+      return ["error" => 'Error actualizando password.', 'status' => false];
     }
   }
 }
-
-
-// $user = new User();
-// $result = $user->getData('cuadrosc99@gmail.com');
-// var_dump($result);
-// $user->setEmail('j@gmail.com');
-// $result = $user->recover();
-// var_dump($result);

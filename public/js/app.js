@@ -1,10 +1,14 @@
-const URL = "/proyectos-juan/login-php"
-const URL2 = "/login-php"
-const guardarDatos = $("#datos")
+// URL base: se lee del atributo data-base-url del <body> (lo emite header.php)
+const URL = document.body.dataset.baseUrl || "";
+const guardarDatos = $("#datos");
+
+// Helper: obtener el token CSRF del form
+function csrf(form) {
+    return $(form).find('input[name="csrf_token"]').val() || "";
+}
 
 $(document).ready(function () {
-    console.log("iniciando jquery");
-    ObtenerDatosLocalStorage()
+    ObtenerDatosLocalStorage();
 });
 
 toastr.options = {
@@ -23,14 +27,13 @@ toastr.options = {
     "hideEasing": "linear",
     "showMethod": "fadeIn",
     "hideMethod": "fadeOut"
-}
+};
 
 // login
 $('#form-login').submit(function (event) {
     event.preventDefault();
-    //console.log("enviando...");
-    let name = $('#name').val();
-    let pass = $('#pass').val();
+    const name = $('#name').val();
+    const pass = $('#pass').val();
 
     $.ajax({
         type: 'POST',
@@ -39,39 +42,31 @@ $('#form-login').submit(function (event) {
         data: {
             name,
             pass,
+            csrf_token: csrf(this),
         },
         success: (response) => {
-            console.log(response);
             if (response.status) {
                 toastr.success('Usuario Logueado Correctamente!');
                 setTimeout(() => {
-                    // window.location.href = '/proyectos-juan/proyecto-uno/Login/acceso';
-                    $(location).attr('href', `${URL}/Admin/inicio`)
-                }, 3000)
-
+                    $(location).attr('href', `${URL}/Admin/inicio`);
+                }, 1500);
             } else if (response.errorinputs) {
                 toastr.warning(response.errorinputs);
             } else {
-                toastr.error(response.error);
+                toastr.error(response.error || 'Error');
             }
-
-
         }
-    })
-
-
+    });
 });
 
 // registrar
 $('#form-registro').submit(function (event) {
     event.preventDefault();
-    console.log("enviando...");
 
-    let name = $('#name').val();
-    let correo = $('#correo').val();
-    let pass = $('#pass').val();
+    const name = $('#name').val();
+    const correo = $('#correo').val();
+    const pass = $('#pass').val();
 
-    console.log(name, pass);
     $.ajax({
         type: 'POST',
         dataType: 'json',
@@ -80,30 +75,26 @@ $('#form-registro').submit(function (event) {
             name: name,
             correo: correo,
             password: pass,
+            csrf_token: csrf(this),
         },
         success: (response) => {
             if (response.error) {
                 toastr.error(response.error);
             } else {
-                console.log(response);
                 toastr.success(response.success);
                 setTimeout(() => {
-                    // window.location.href = '/proyectos-juan/proyecto-uno/Login/acceso';
-                    $(location).attr('href', `${URL}/Admin/inicio`);
-                }, 3000);
+                    $(location).attr('href', `${URL}/App/acceso`);
+                }, 2000);
             }
         }
-    })
+    });
 });
 
 // envio del recover passwords
 $('#form-recover').submit(function (event) {
     event.preventDefault();
-    console.log("enviando...");
 
-    let email = $('#email_recover').val();
-
-    console.log(email);
+    const email = $('#email_recover').val();
 
     $.ajax({
         type: 'POST',
@@ -111,90 +102,74 @@ $('#form-recover').submit(function (event) {
         url: `${URL}/App/enviarCambioPassword`,
         data: {
             email: email,
+            csrf_token: csrf(this),
         },
         success: (response) => {
-            console.log(response);
-            toastr.success(response.message);
+            toastr.success(response.message || 'Enviado');
             setTimeout(() => {
-                // window.location.href = '/proyectos-juan/proyecto-uno/Login/acceso';
                 $(location).attr('href', `${URL}/App/acceso`);
-            }, 3000);
+            }, 2000);
         }
-    })
+    });
 });
 
 // cambio de contraseña
 $('#form-password').submit(function (event) {
     event.preventDefault();
-    let id_user = $('#id_user').val();
-    let pass = $('#pass_recover').val();
-    let pass_confirm = $('#pass_recover_confirm').val();
+    const id_user = $('#id_user').val();
+    const pass = $('#pass_recover').val();
+    const pass_confirm = $('#pass_recover_confirm').val();
 
-    if (pass === pass_confirm && pass.length === pass_confirm.length) {
-        $.ajax({
-            type: 'POST',
-            dataType: 'json',
-            url: `${URL}/App/UpdatePass`,
-            data: {
-                id_user: id_user,
-                pass: pass
-            },
-            success: (response) => {
-                if (response.status) {
-                    toastr.success(`${response.response}, password cambiada correctamente!`);
-                    setTimeout(() => {
-                        // window.location.href = '/proyectos-juan/proyecto-uno/Login/acceso';
-                        $(location).attr('href', `${URL}/App/acceso`);
-                    }, 3000);
-                }
-            }
-        })
-    } else {
-        toastr.error('Las contraseñas son erroneas');
+    if (pass.length < 8) {
+        toastr.error('La contraseña debe tener al menos 8 caracteres.');
+        return;
+    }
+    if (pass !== pass_confirm) {
+        toastr.error('Las contraseñas no coinciden.');
+        return;
     }
 
+    $.ajax({
+        type: 'POST',
+        dataType: 'json',
+        url: `${URL}/App/UpdatePass`,
+        data: {
+            id_user: id_user,
+            pass: pass,
+            csrf_token: csrf(this),
+        },
+        success: (response) => {
+            if (response.status) {
+                toastr.success('Contraseña cambiada correctamente!');
+                setTimeout(() => {
+                    $(location).attr('href', `${URL}/App/acceso`);
+                }, 2000);
+            } else {
+                toastr.error(response.response || 'Error');
+            }
+        }
+    });
 });
 
-$('#datos').change(function (event) {
-    recordarDatosLogin()
-})
+// "Recordarme" sólo guarda el username (NUNCA la contraseña)
+$('#datos').change(function () {
+    recordarDatosLogin();
+});
 
-
-// funciones
 function recordarDatosLogin() {
-    const storage = localStorage
     if (guardarDatos.is(':checked')) {
-        const data = {
-            nombre: $("#name").val(),
-            password: $("#pass").val(),
-            check: $('#datos').val()
-        }
-        storage.setItem("datos", JSON.stringify(data))
-        toastr.success("datos guardados!")
-
-    } else if(!guardarDatos.is(':checked')) {
-        storage.removeItem("datos")
-        toastr.success("datos removidos!")
+        localStorage.setItem("login_user", $("#name").val());
+        toastr.success("Usuario recordado");
+    } else {
+        localStorage.removeItem("login_user");
     }
 }
 
 function ObtenerDatosLocalStorage() {
-    const storage = localStorage
-    const nombre = $("#name")
-    const password = $("#pass")
-    const checkeds = $("#datos")
-
-    if(storage.getItem("datos") != null) {
-        let datos = JSON.parse(storage.getItem("datos"))
-        nombre.val(datos.nombre)
-        nombre.focus()
-        password.val(datos.password)
-        password.focus()
-
-        if(datos.check === 'on') {
-            checkeds.attr("checked", true)
-        } else {
-            checkeds.attr("checked", false)
-        }
+    const saved = localStorage.getItem("login_user");
+    if (saved) {
+        $("#name").val(saved);
+        $("#datos").prop("checked", true);
+        $("#pass").focus();
     }
 }

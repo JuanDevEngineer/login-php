@@ -1,11 +1,7 @@
 <?php
 
-if(!isset($_SESSION)){
-    session_start();
-}
-
-class AdminController extends SesionController {
-
+class AdminController extends SesionController
+{
     protected $view;
 
     public function __construct()
@@ -15,52 +11,34 @@ class AdminController extends SesionController {
 
     public function inicio()
     {
-        if($this->isUser()){
-            $this->view->render('usuarios/index');
-        }else{
-            $this->redirect('/App/acceso');
-        }    
+        $this->requireAuth();
+        $this->view->render('usuarios/index');
     }
-    
+
+    /**
+     * Vista de gestión de usuarios: sólo admin.
+     */
     public function gestor()
     {
-        if($this->isUser()){
-            $this->view->render('usuarios/gestor');
-        }else{
-            $this->redirect('/App/acceso');
-        }
-        
+        $this->requireAdmin();
+        $this->view->render('usuarios/gestor');
     }
 
     public function perfil()
     {
-        if($this->isUser()){
-            $this->view->render('usuarios/perfil');
-        }else{
-            $this->redirect('/App/acceso'); 
-        }
-        
+        $this->requireAuth();
+        $this->view->render('usuarios/perfil');
     }
 
     public function creacionproductos()
     {
-        if($this->isUser()){
-            $this->view->render('productos/creacion');
-        }else{
-            $this->redirect('/App/acceso'); 
-        }
-        
+        $this->requireAdmin();
+        $this->view->render('productos/creacion');
     }
 
     public function productos()
     {
-        if($this->isUser()){
-            $this->view->render('productos/gestor');
-        }else{
-            $this->redirect('/App/acceso'); 
-        }
-        
+        $this->requireAuth();
+        $this->view->render('productos/gestor');
     }
-
-
 }

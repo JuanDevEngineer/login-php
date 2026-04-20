@@ -8,11 +8,12 @@
                 <h3 class="text-center">Recuperar contraseña</h3>
             </div>
             <form id="form-recover">
+                <?php echo csrf_field(); ?>
                 <div class="input-group form-group col-md-10 offset-md-1">
                     <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-key"></i></span>
                     </div>
-                    <input type="text" name="email_recover" id="email_recover" class="form-control" placeholder="correo electronico">
+                    <input type="email" name="email_recover" id="email_recover" class="form-control" placeholder="correo electronico">
 
                 </div>
 
@@ -22,7 +23,7 @@
             </form>
             <div class="card-footer">
                 <div class="d-flex justify-content-center links">
-                    <a href="<?Php echo BASE_URL ?>/App/acceso">Volver al login</a>
+                    <a href="<?php echo e(BASE_URL); ?>/App/acceso">Volver al login</a>
                 </div>
             </div>
         </div>

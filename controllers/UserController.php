@@ -2,7 +2,8 @@
 
 require_once 'model/User.php';
 
-class UserController extends SesionController {
+class UserController extends SesionController
+{
 
     protected $view;
 
@@ -11,11 +12,11 @@ class UserController extends SesionController {
         $this->view = new View();
     }
 
-    public function dashboard() {
-
-        if($this->isUser()){
+    public function dashboard()
+    {
+        if ($this->isUser()) {
             $this->view->render('usuarios/editar');
-        }else{
+        } else {
             $this->redirect('/App/acceso');
         }
     }

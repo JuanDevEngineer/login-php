@@ -21,9 +21,9 @@
                 <div class="usuario-perfil">
                     <div>
                         <?php if (isset($_SESSION['image'])) : ?>
-                            <img src="<?php echo $_SESSION['image']?>" class="img-circle" />
+                            <img src="<?php echo e($_SESSION['image']); ?>" class="img-circle" />
                         <?php else : ?>
-                            <img src="<?php echo BASE_URL ?>/assets/uploads/29292.jpg" class="img-circle" />
+                            <img src="<?php echo e(BASE_URL); ?>/assets/uploads/29292.jpg" class="img-circle" />
                         <?php endif; ?>
                     </div>
                 </div>
@@ -64,16 +64,16 @@
                                     <span class="input-group-text"><i class="fas fa-user"></i></span>
                                 </div>
 
-                                <input type="hidden" name="id_k" id="id_k" value="<?php echo isset($_SESSION['id_k']) ?  $_SESSION['id_k'] : ''; ?>" />
+                                <input type="hidden" name="id_k" id="id_k" value="<?php echo e($_SESSION['id_k'] ?? ''); ?>" />
 
-                                <input type="text" name="usuario" id="usuario" class="form-control" placeholder="usuario" value="<?php echo isset($_SESSION['usuario']) ?  $_SESSION['usuario'] : ''; ?>" disabled="true" />
+                                <input type="text" name="usuario" id="usuario" class="form-control" placeholder="usuario" value="<?php echo e($_SESSION['usuario'] ?? ''); ?>" disabled="true" />
 
                             </div>
                             <div class="input-group form-group col-6">
                                 <div class="input-group-prepend">
                                     <span class="input-group-text"><i class="fas fa-atom"></i></span>
                                 </div>
-                                <input type="text" name="email" id="email" class="form-control" placeholder="email" value="<?php echo isset($_SESSION['usuario']) ?  $_SESSION['email'] : ''; ?>" disabled="true" />
+                                <input type="text" name="email" id="email" class="form-control" placeholder="email" value="<?php echo e($_SESSION['email'] ?? ''); ?>" disabled="true" />
                             </div>
                         </div>
                     </form>

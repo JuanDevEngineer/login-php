@@ -9,7 +9,8 @@
                 </div>
                 <form id="form-password">
 
-                    <input type="hidden" name="id_user" id="id_user" value="<?php echo $user_id['id_usuario']; ?>">
+                    <input type="hidden" name="id_user" id="id_user" value="<?php echo e($user_id['id_usuario'] ?? ''); ?>">
+                    <input type="hidden" name="csrf_token" value="<?php echo e(csrf_token()); ?>">
 
                     <div class="input-group form-group col-md-10 offset-md-1">
                         <div class="input-group-prepend">

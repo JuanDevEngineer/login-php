@@ -2,25 +2,41 @@
 
 class DataBase
 {
-    private $host = "localhost:3306";
-    private $db_name = "test";
-    private $db_user = "root";
-    private $db_pass = "1234";
-    private $conn;
+    private static ?PDO $conn = null;
 
     public function getConnection()
     {
-        try {
-            $this->conn = new PDO("mysql:dbname=".$this->db_name . ";host=" . $this->host, $this->db_user, $this->db_pass, array(PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8"));
-            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        }catch (PDOException $e) {
-            echo "Error en la conexion: " . $e->getMessage();
+        if (self::$conn !== null) {
+            return self::$conn;
         }
 
-        // print_r($this->conn);
-        // var_dump($this->conn);
-        return $this->conn;
-    }
+        $host    = env('DB_HOST', 'localhost:3306');
+        $db_name = env('DB_NAME', 'test');
+        $db_user = env('DB_USER', 'root');
+        $db_pass = env('DB_PASS', '');
 
+        try {
+            self::$conn = new PDO(
+                "mysql:dbname={$db_name};host={$host};charset=utf8mb4",
+                $db_user,
+                $db_pass,
+                [
+                    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4",
+                    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES   => false,
+                ]
+            );
+        } catch (PDOException $e) {
+            // En producción NUNCA volcar el mensaje al cliente.
+            error_log("DB connection error: " . $e->getMessage());
+            if (env('APP_ENV', 'production') === 'development') {
+                echo "Error en la conexion: " . $e->getMessage();
+            } else {
+                echo "Error de conexión a la base de datos.";
+            }
+            return null;
+        }
+        return self::$conn;
+    }
 }

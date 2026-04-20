@@ -12,6 +12,7 @@
 			</div>
 			<div class="card-body">
 				<form id="form-login">
+						<?php echo csrf_field(); ?>
 					<div class="input-group form-group">
 						<div class="input-group-prepend">
 							<span class="input-group-text"><i class="fas fa-user"></i></span>
@@ -35,10 +36,10 @@
 			</div>
 			<div class="card-footer">
 				<div class="d-flex justify-content-center links">
-					Aún no tienes cuenta?<a href="<?Php echo BASE_URL ?>/App/registro"> Registrarse</a>
+					Aún no tienes cuenta?<a href="<?php echo e(BASE_URL); ?>/App/registro"> Registrarse</a>
 				</div>
 				<div class="d-flex justify-content-center">
-					<a href="<?Php echo BASE_URL ?>/App/recover">Has olivado la contraseña?</a>
+					<a href="<?php echo e(BASE_URL); ?>/App/recover">¿Has olvidado la contraseña?</a>
 				</div>
 			</div>
 		</div>

@@ -2,17 +2,15 @@
 
 class Controller {
 
-    public function __construct()
-    {
+    public function __construct() {
         $this->App();
     }
 
-    public function App() {
+    private function App() {
+        $name_controller = DEFAULT_CONTROLLER;
         
         if (isset($_GET['controller'])) {
             $name_controller = $_GET['controller'].'Controller';
-
-            // echo $name_controller . "<br>";
         
         } elseif(!isset($_GET['controller']) && !isset($_GET['action'])) {
             $name_controller = DEFAULT_CONTROLLER;

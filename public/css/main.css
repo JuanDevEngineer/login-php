@@ -21,12 +21,13 @@ img {
     max-width: 100%;
 }
 
-.active:hover {
+.active {
     transition: 0.6s ease;
+    background-color: rgb(255 , 195, 18);
 }
 
 .active:hover {
-    background-color: rgb(255 , 195, 18);
+    background-color: rgb(255 , 195, 19);
     border-radius: 3px;
     color: black !important;
 }

@@ -28,6 +28,7 @@
 				</div>
 				<div class="card-body">
 					<form id="form-registro">
+							<?php echo csrf_field(); ?>
 						<div class="input-group form-group">
 							<div class="input-group-prepend">
 								<span class="input-group-text"><i class="fas fa-envelope"></i></span>
@@ -54,7 +55,7 @@
 				</div>
 				<div class="card-footer">
 					<div class="d-flex justify-content-center">
-						<a href="<?Php echo BASE_URL ?>/App/acceso">Volver al login</a>
+						<a href="<?php echo e(BASE_URL); ?>/App/acceso">Volver al login</a>
 					</div>
 				</div>
 			</div>
