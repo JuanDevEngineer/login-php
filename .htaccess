@@ -1,12 +1,44 @@
+# ---------------------------------------------------------------------
+# Front controller: todo lo que no sea un archivo real va a index.php
+# ---------------------------------------------------------------------
 <IfModule mod_rewrite.c>
-    # Activar rewrite
-    RewriteEngine on
-    # ErrorDocument 404 http://localhost/master-php/proyecto-php-poo/error/formerror
+    RewriteEngine On
 
-    # Options -Indexes
+    # No reescribir recursos existentes (css, js, imágenes, uploads).
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
 
-    RewriteCond %{SCRIPT_FILENAME} !-d
-    RewriteCond %{SCRIPT_FILENAME} !-f
-
-    RewriteRule ^(.*)/(.*) index.php?controller=$1&action=$2 [QSA,L]
+    RewriteRule ^ index.php [L]
 </IfModule>
+
+Options -Indexes
+
+# ---------------------------------------------------------------------
+# Cabeceras de seguridad
+# ---------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "DENY"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+    
+
+    # Activar solo detrás de HTTPS.
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# ---------------------------------------------------------------------
+# Archivos y carpetas que nunca deben servirse
+# ---------------------------------------------------------------------
+<FilesMatch "^(\.env.*|composer\.(json|lock)|bootstrap\.php|autoload\.php|.*\.md)$">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(sql|log|ini|conf|bak|dist|yml|yaml)$">
+    Require all denied
+</FilesMatch>
+
+# El código fuente no es contenido web: solo index.php es alcanzable.
+RedirectMatch 404 ^.*/(src|resources|database|vendor|libs|tests)(/|$)

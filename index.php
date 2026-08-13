@@ -1,37 +1,38 @@
 <?php
 
-error_reporting(E_ALL); // Error/Exception engine, always use E_ALL
+declare(strict_types=1);
 
-ini_set('ignore_repeated_errors', TRUE); // always use TRUE
+/**
+ * Front controller. Único punto de entrada de la aplicación:
+ * arranca, enruta, responde.
+ */
 
-ini_set('date.timezone', 'America/Bogota'); // 
+use App\Presentation\Http\Request;
+use App\Presentation\Http\Response;
+use App\Presentation\Http\Router;
 
-ini_set('display_errors', TRUE); // Error/Exception display, use FALSE only in production environment or real server. Use TRUE in development environment
+/** @var \App\Infrastructure\Container $container */
+$container = require __DIR__ . '/bootstrap.php';
 
-ini_set('log_errors', TRUE); // Error/Exception file logging engine.
+try {
+    $response = (new Router($container))->dispatch(Request::fromGlobals());
+} catch (\Throwable $e) {
+    error_log(sprintf(
+        '[%s] %s en %s:%d',
+        get_class($e),
+        $e->getMessage(),
+        $e->getFile(),
+        $e->getLine()
+    ));
 
-ini_set("error_log", "/xampp/htdocs/proyectos-juan/login-php/php-error.log");
+    if ($container->config()->isDevelopment()) {
+        throw $e;
+    }
 
+    $response = Response::html(
+        $container->view()->render('errors/500'),
+        500
+    );
+}
 
-require_once __DIR__.'/autoload.php';
-require_once __DIR__.'/config/DataBase.php';
-require_once __DIR__.'/config/Constants.php';
-require_once __DIR__.'./helpers/SesionController.php';
-// require_once 'helpers/SesionController.php';
-require_once __DIR__.'./helpers/helpers.php';
-// require_once '/helpers/helpers.php';
-require_once 'libs/view.php';
-require_once 'controllers/MailController.php';
-require_once 'controllers/Controller.php';
-
-require_once 'libs/PHPMailer-master/src/Exception.php';
-require_once 'libs/PHPMailer-master/src/OAuth.php';
-require_once 'libs/PHPMailer-master/src/PHPMailer.php';
-require_once 'libs/PHPMailer-master/src/POP3.php';
-require_once 'libs/PHPMailer-master/src/SMTP.php';
-
-$inicio = new Controller();
-
-
-
-
+$response->send();
