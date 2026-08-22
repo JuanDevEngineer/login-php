@@ -80,6 +80,13 @@ final class InMemoryRoleRepository implements RoleRepository
         }
     }
 
+    public function syncPermissions(Role $role): void
+    {
+        if ($role->id() !== null && isset($this->roles[$role->id()])) {
+            $this->roles[$role->id()] = $role;
+        }
+    }
+
     public function count(): int
     {
         return count($this->roles);

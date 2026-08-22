@@ -1,0 +1,181 @@
+/* ==========================================================================
+   Cards de métricas del panel
+
+   Dirección: editorial / utilitaria. Cifra dominante en tipografía tabular,
+   etiqueta pequeña en versalitas, un filete de acento vertical y fondo con
+   textura sutil. Deliberadamente NO se usa el .info-box de AdminLTE, que es
+   el bloque de color plano con icono cuadrado que aparece en cualquier
+   plantilla y no dice nada del producto.
+   ========================================================================== */
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    --accent: #2b2f36;
+
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 1.5rem 1.35rem 1.75rem;
+    background: #fff;
+    border: 1px solid #e3e6ea;
+    border-radius: 4px;
+    overflow: hidden;
+
+    /* Trama diagonal muy tenue: da textura sin competir con la cifra. */
+    background-image: repeating-linear-gradient(
+        135deg,
+        rgba(0, 0, 0, .014) 0 1px,
+        transparent 1px 7px
+    );
+
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+
+/* Filete de acento a la izquierda: es el elemento que da carácter. */
+.stat-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: var(--accent);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(20, 24, 31, .1);
+}
+
+/* ------------------------------------------------------------ encabezado */
+.stat-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .35rem;
+}
+
+.stat-card__label {
+    margin: 0;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    /* #5b6270 sobre blanco = 6.1:1, supera el 4.5:1 de AA para texto normal. */
+    color: #5b6270;
+}
+
+.stat-card__icon {
+    flex-shrink: 0;
+    font-size: 1.05rem;
+    line-height: 1;
+    color: var(--accent);
+    opacity: .55;
+}
+
+/* ----------------------------------------------------------------- cifra */
+.stat-card__value {
+    margin: 0;
+    font-size: 3rem;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -.035em;
+    color: #14181f;
+
+    /* Cifras tabulares: las columnas no bailan al cambiar los números. */
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+}
+
+.stat-card__hint {
+    margin: .55rem 0 0;
+    font-size: .8rem;
+    line-height: 1.4;
+    color: #6b7280; /* 4.8:1 sobre blanco */
+}
+
+/* ---------------------------------------------------------------- acentos
+   El acento nunca es el único portador de significado: cada card lleva su
+   propio icono y su propia etiqueta (WCAG 1.4.1). */
+.stat-card--ink   { --accent: #14181f; }
+.stat-card--amber { --accent: #b26a00; } /* 4.6:1 sobre blanco */
+.stat-card--teal  { --accent: #00696b; } /* 5.2:1 sobre blanco */
+
+/* -------------------------------------------------------- preferencias UA */
+@media (prefers-reduced-motion: reduce) {
+    .stat-card {
+        transition: none;
+    }
+    .stat-card:hover {
+        transform: none;
+    }
+}
+
+@media (prefers-contrast: more) {
+    .stat-card {
+        border-color: #14181f;
+    }
+    .stat-card__label,
+    .stat-card__hint {
+        color: #14181f;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .stat-card__value {
+        font-size: 2.4rem;
+    }
+}
+
+/* Texto solo para lectores de pantalla. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ==========================================================================
+   Matriz de permisos
+   ========================================================================== */
+
+.permissions-table th[scope="colgroup"] {
+    background: #14181f;
+    color: #fff;
+    font-size: .7rem;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    padding: .5rem .75rem;
+}
+
+.permissions-table code {
+    font-size: .72rem;
+}
+
+/* <caption> visible solo para lectores de pantalla: la tabla ya tiene título
+   en la cabecera de la card, pero necesita descripción accesible propia. */
+.sr-only-caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+.permission-check:disabled + .custom-control-label {
+    opacity: .55;
+    cursor: not-allowed;
+}

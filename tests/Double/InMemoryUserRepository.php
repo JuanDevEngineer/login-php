@@ -155,8 +155,19 @@ final class InMemoryUserRepository implements UserRepository
         return $count;
     }
 
-    public function count(): int
+    public function count(?bool $active = null): int
     {
-        return count($this->users);
+        if ($active === null) {
+            return count($this->users);
+        }
+
+        $count = 0;
+        foreach ($this->users as $user) {
+            if ($user->isActive() === $active) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 }

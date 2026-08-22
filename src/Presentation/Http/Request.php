@@ -73,6 +73,30 @@ final class Request
         return is_scalar($value) ? (string) $value : $default;
     }
 
+    /**
+     * Valores de un campo repetido (checkboxes). Devuelve lista vacía si no
+     * llegó nada: desmarcar todo es un array vacío, no una ausencia.
+     *
+     * @return list<string>
+     */
+    public function arrayInput(string $key): array
+    {
+        $value = $this->body[$key] ?? [];
+
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($value as $item) {
+            if (is_scalar($item)) {
+                $result[] = (string) $item;
+            }
+        }
+
+        return $result;
+    }
+
     public function has(string $key): bool
     {
         return isset($this->body[$key]);

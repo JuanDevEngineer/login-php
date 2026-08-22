@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Presentation\Controller;
 
+use App\Application\UseCase\Dashboard\GetDashboardMetrics;
 use App\Presentation\Http\Request;
 use App\Presentation\Http\Response;
 
@@ -12,8 +13,9 @@ final class DashboardController extends AbstractController
     public function index(Request $request): Response
     {
         return $this->view('pages/users/dashboard', [
-            'title'     => 'Inicio',
-            'breadcrumb'=> ['Inicio'],
+            'title'      => 'Inicio',
+            'breadcrumb' => ['Inicio'],
+            'metrics'    => $this->useCase(GetDashboardMetrics::class)->execute(),
         ]);
     }
 

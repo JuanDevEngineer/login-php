@@ -51,19 +51,23 @@ src/
 ├── Domain/                  ← núcleo, sin dependencias externas
 │   ├── Entity/              User, Role
 │   ├── ValueObject/         Email, Username, PlainPassword, HashedPassword,
-│   │                        RecoveryToken, UserId, UserStatus, RoleName
+│   │                        RecoveryToken, UserId, UserStatus, RoleName,
+│   │                        Permission (enum), PermissionSet
 │   ├── Port/                ← LAS INTERFACES (los "puertos")
 │   │                        UserRepository, RoleRepository, PasswordHasher,
 │   │                        Mailer, SessionStorage, TokenGenerator,
-│   │                        ImageStorage, Clock
+│   │                        ImageStorage, Clock, LoginLog
 │   └── Exception/           errores de negocio
 │
 ├── Application/             ← orquestación, un archivo por operación
 │   ├── Dto/                 AuthenticatedUser, UserView, UploadedImage,
-│   │                        NewUserData, RoleView
+│   │                        NewUserData, RoleView, DashboardMetrics
 │   └── UseCase/
 │       ├── Auth/            LoginUser, RegisterUser, LogoutUser,
 │       │                    GetAuthenticatedUser
+│       ├── Dashboard/       GetDashboardMetrics
+│       ├── Permission/      UserCan, GetPermissionMatrix,
+│       │                    SyncRolePermissions
 │       ├── Password/        RequestPasswordReset, ValidateRecoveryToken,
 │       │                    ResetPassword
 │       ├── Role/             CreateRole, UpdateRole, DeleteRole,
@@ -73,7 +77,8 @@ src/
 │                            ChangeProfileImage, RemoveProfileImage
 │
 ├── Infrastructure/          ← LOS ADAPTADORES
-│   ├── Persistence/Pdo/     PdoUserRepository, PdoRoleRepository
+│   ├── Persistence/Pdo/     PdoUserRepository, PdoRoleRepository,
+│   │                        PdoLoginLog
 │   ├── Security/            BcryptPasswordHasher, RandomTokenGenerator,
 │   │                        CsrfGuard
 │   ├── Session/             NativeSession
@@ -93,7 +98,7 @@ resources/views/
 ├── layouts/                 public.php, dashboard.php
 ├── partials/                navbar, sidebar, breadcrumb, formularios
 ├── components/              card, input-group, modal, auth-card,
-│                            data-table, avatar
+│                            data-table, avatar, stat-card
 ├── pages/                   auth/*, users/*, roles/*
 └── errors/                  404, 403, 419, 500, generic
 ```
@@ -108,34 +113,25 @@ que dejaba instanciar cualquier clase e invocar cualquier método público desde
 la URL. Ahora solo existe lo declarado, y cada ruta lleva escrito su nivel de
 acceso.
 
-| Método | Ruta                  | Acceso  |
-|--------|-----------------------|---------|
-| GET    | `/login`              | público |
-| POST   | `/login`              | público |
-| GET    | `/register`           | público |
-| POST   | `/register`           | público |
-| GET    | `/logout`             | público |
-| GET    | `/password/forgot`    | público |
-| POST   | `/password/forgot`    | público |
-| GET    | `/password/reset`     | público |
-| POST   | `/password/reset`     | público |
-| GET    | `/dashboard`          | auth    |
-| GET    | `/profile`            | auth    |
-| POST   | `/api/profile/image`        | auth    |
-| POST   | `/api/profile/image/delete` | auth    |
-| GET    | `/users`              | admin   |
-| POST   | `/api/users/create`   | admin   |
-| POST   | `/api/users/list`     | admin   |
-| POST   | `/api/users/find`     | admin   |
-| POST   | `/api/users/update`   | admin   |
-| POST   | `/api/users/toggle`   | admin   |
-| GET    | `/api/users/names`    | admin   |
-| GET    | `/roles`              | admin   |
-| GET    | `/api/roles`          | admin   |
-| GET    | `/api/roles/list`     | admin   |
-| POST   | `/api/roles/create`   | admin   |
-| POST   | `/api/roles/update`   | admin   |
-| POST   | `/api/roles/delete`   | admin   |
+| Método | Ruta                          | Permiso exigido        |
+|--------|-------------------------------|------------------------|
+| GET/POST | `/login` `/register` `/logout` | — (público)         |
+| GET/POST | `/password/forgot` `/password/reset` | — (público)   |
+| GET    | `/profile`                    | — (solo sesión)        |
+| GET    | `/dashboard`                  | `panel.ver`            |
+| POST   | `/api/profile/image`          | `perfil.editar`        |
+| POST   | `/api/profile/image/delete`   | `perfil.editar`        |
+| GET    | `/users`                      | `usuarios.ver`         |
+| POST   | `/api/users/list` `/find`     | `usuarios.ver`         |
+| GET    | `/api/users/names`            | `usuarios.ver`         |
+| POST   | `/api/users/create`           | `usuarios.crear`       |
+| POST   | `/api/users/update`           | `usuarios.editar`      |
+| POST   | `/api/users/toggle`           | `usuarios.cambiar_estado` |
+| GET    | `/roles`                      | `roles.ver`            |
+| GET    | `/api/roles` `/api/roles/list` | `roles.ver`           |
+| POST   | `/api/roles/create` `/update` `/delete` | `roles.gestionar` |
+| GET    | `/roles/permisos`             | `permisos.gestionar`   |
+| POST   | `/api/roles/permissions`      | `permisos.gestionar`   |
 
 Todo POST exige token CSRF; lo aplica el router, no cada controlador.
 
@@ -193,6 +189,8 @@ Si ya tenías la base con el esquema viejo:
 mysql -u root -p < database/migration-2.0.sql
 mysql -u root -p < database/migration-2.1.sql   # gestión de roles
 mysql -u root -p < database/migration-2.2.sql   # foto de perfil
+mysql -u root -p < database/migration-2.3.sql   # registro de accesos
+mysql -u root -p < database/migration-2.4.sql   # permisos por rol
 ```
 
 `migration-2.1.sql` incluye al final una consulta de comprobación: si tenés
@@ -207,8 +205,13 @@ de PHP, lo que alcanza para probar el flujo de recuperación en local.
 
 ```bash
 composer install
-vendor/bin/phpunit
+vendor/bin/phpunit          # tests
+vendor/bin/phpstan analyse  # análisis estático, nivel 9
+composer check              # ambos
 ```
+
+El proyecto requiere **PHP 8.1+** (`readonly` en los DTOs) y está configurado
+para PHPStan nivel 9 en `phpstan.neon`.
 
 Los tests de casos de uso corren **sin base de datos, sin SMTP y sin disco**:
 los puertos se sustituyen por dobles en `tests/Double/`
@@ -308,6 +311,66 @@ supera `post_max_size`, PHP vacía `$_POST` y `$_FILES` enteros: el router lo
 detecta comparando `CONTENT_LENGTH` contra el límite y responde 413 explicando
 el tamaño, en vez del "token CSRF inválido" que salía antes y mandaba a buscar
 el problema al lugar equivocado.
+
+---
+
+## Métricas del panel
+
+`/dashboard` muestra tres cifras: usuarios registrados, usuarios inactivos e
+inicios de sesión del mes en curso.
+
+**Registro de accesos.** La tabla `acceso` es un log append-only con una fila
+por autenticación exitosa. Guarda solo `usuario_id` y `fecha`: **sin IP ni
+user-agent**, porque son datos personales que la métrica no necesita. Se
+registran únicamente los logins correctos; los fallidos son otra función
+(detección de fuerza bruta) y no está implementada.
+
+La escritura del log va envuelta en `try/catch` dentro de `LoginUser`. La
+bitácora es una métrica, no parte del contrato de autenticación: si esa tabla
+falla, el usuario ya está autenticado y no tiene por qué quedarse fuera. Hay un
+test que fija ese comportamiento.
+
+**El mes en curso** se calcula desde el `Clock` inyectado, nunca con `date()` ni
+con `NOW()` en SQL. Dos motivos: es testeable sin esperar a que cambie el mes, y
+no depende de la zona horaria del motor de base de datos, que puede diferir de
+la de PHP. El rango es `[día 1 00:00, día 1 del mes siguiente 00:00)` — extremo
+superior **exclusivo**, que evita el error clásico de perderse el último día al
+usar `BETWEEN`. Hay tests para el cruce de año y para meses de distinta
+longitud.
+
+**La tabla crece sin límite.** `migration-2.3.sql` lleva comentada una sentencia
+de purga por antigüedad; activarla es una decisión del negocio.
+
+---
+
+## Permisos
+
+Los permisos se asignan al **rol**, no a la persona. `/roles/permisos` es la
+matriz donde se marcan.
+
+**El catálogo es un enum de PHP**, `Domain\ValueObject\Permission`, y no una
+tabla. Un permiso solo significa algo si hay código que lo comprueba; si se
+pudieran crear desde la interfaz, se acumularían entradas decorativas que no
+protegen nada. La base solo guarda **qué rol tiene cuál**, en `rol_permiso`.
+
+**Un único punto de decisión**: `Role::can()`. Ahí vive también el atajo de
+`ROL_ADMIN`, que pasa siempre sin mirar el conjunto. Es una red de seguridad
+deliberada: sin ella, desmarcar por error `permisos.gestionar` dejaría el panel
+inaccesible y solo se recuperaría por consola de MySQL. Por eso la matriz
+muestra ese rol bloqueado.
+
+**Lectura fresca**: `UserCan` lee el rol de la base en cada petición, con caché
+dentro del mismo request. Cachearlo en la sesión sería más barato pero
+significaría que revocar un permiso a alguien conectado no surte efecto hasta
+que cierre sesión — un agujero real. Hay un test que fija ese comportamiento.
+
+**Defensa en profundidad**: el router rechaza la petición, el caso de uso
+vuelve a comprobar donde la regla no es puramente de ruta (foto de otro
+usuario), y el menú oculta lo que no se puede usar. Ocultar no es proteger: es
+solo para no ofrecer lo que devolvería 403.
+
+El verificador estático exige que **toda ruta declare un permiso que exista en
+el enum**, y avisa de permisos declarados que ningún sitio comprueba.
 
 ---
 

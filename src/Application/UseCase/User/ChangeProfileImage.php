@@ -8,19 +8,19 @@ use App\Application\Dto\AuthenticatedUser;
 use App\Application\Dto\UploadedImage;
 use App\Domain\Exception\AccessDeniedException;
 use App\Domain\Exception\UserNotFoundException;
+use App\Application\UseCase\Permission\UserCan;
 use App\Domain\Port\ImageStorage;
 use App\Domain\Port\UserRepository;
+use App\Domain\ValueObject\Permission;
 use App\Domain\ValueObject\UserId;
 
 final class ChangeProfileImage
 {
-    private UserRepository $users;
-    private ImageStorage $storage;
-
-    public function __construct(UserRepository $users, ImageStorage $storage)
-    {
-        $this->users   = $users;
-        $this->storage = $storage;
+    public function __construct(
+        private readonly UserRepository $users,
+        private readonly ImageStorage $storage,
+        private readonly UserCan $userCan,
+    ) {
     }
 
     /**
@@ -30,9 +30,11 @@ final class ChangeProfileImage
     {
         $targetId = UserId::fromMixed($rawTargetId);
 
-        // Solo el dueño de la cuenta o un admin pueden cambiar la foto.
+        // Sobre la foto propia siempre se puede. Sobre la de otro hace falta
+        // el permiso de editar usuarios: antes se preguntaba por el rol, lo que
+        // dejaba esta regla fuera del sistema de permisos.
         $isSelf = $actor->id === $targetId->value();
-        if (!$isSelf && !$actor->isAdmin()) {
+        if (!$isSelf && !$this->userCan->execute($actor, Permission::UsuariosEditar)) {
             throw AccessDeniedException::create();
         }
 

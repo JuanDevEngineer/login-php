@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Presentation\Controller;
 
 use App\Application\Dto\AuthenticatedUser;
+use App\Application\UseCase\Permission\UserCan;
+use App\Domain\ValueObject\Permission;
+use App\Domain\ValueObject\PermissionSet;
 use App\Infrastructure\Container;
 use App\Presentation\Http\Response;
 
@@ -44,10 +47,27 @@ abstract class AbstractController
     {
         $data['authUser'] = $this->user;
 
+        // Los permisos efectivos van a TODA vista: el menú y los botones se
+        // filtran con ellos. Se calculan una sola vez por petición, porque
+        // UserCan cachea el rol internamente.
+        $data['userPermissions'] = $this->permissions();
+
         return Response::html(
             $this->container->view()->render($template, $data),
             $status
         );
+    }
+
+    /** Permisos efectivos del usuario en sesión. */
+    protected function permissions(): PermissionSet
+    {
+        return $this->container->get(UserCan::class)->all($this->user);
+    }
+
+    /** Atajo para comprobar un permiso dentro de un controlador. */
+    protected function can(Permission $permission): bool
+    {
+        return $this->container->get(UserCan::class)->execute($this->user, $permission);
     }
 
     protected function redirect(string $path): Response

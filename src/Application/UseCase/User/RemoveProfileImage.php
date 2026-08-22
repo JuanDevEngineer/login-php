@@ -7,20 +7,20 @@ namespace App\Application\UseCase\User;
 use App\Application\Dto\AuthenticatedUser;
 use App\Domain\Exception\AccessDeniedException;
 use App\Domain\Exception\UserNotFoundException;
+use App\Application\UseCase\Permission\UserCan;
 use App\Domain\Port\ImageStorage;
 use App\Domain\Port\UserRepository;
+use App\Domain\ValueObject\Permission;
 use App\Domain\ValueObject\UserId;
 
 /** Quita la foto de perfil y borra el archivo del disco. */
 final class RemoveProfileImage
 {
-    private UserRepository $users;
-    private ImageStorage $storage;
-
-    public function __construct(UserRepository $users, ImageStorage $storage)
-    {
-        $this->users   = $users;
-        $this->storage = $storage;
+    public function __construct(
+        private readonly UserRepository $users,
+        private readonly ImageStorage $storage,
+        private readonly UserCan $userCan,
+    ) {
     }
 
     /**
@@ -30,7 +30,10 @@ final class RemoveProfileImage
     {
         $targetId = UserId::fromMixed($rawTargetId);
 
-        if ($actor->id !== $targetId->value() && !$actor->isAdmin()) {
+        // Misma regla que al subir: la propia siempre, la ajena con permiso.
+        if ($actor->id !== $targetId->value()
+            && !$this->userCan->execute($actor, Permission::UsuariosEditar)
+        ) {
             throw AccessDeniedException::create();
         }
 

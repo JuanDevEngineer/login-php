@@ -53,3 +53,29 @@ CREATE TABLE IF NOT EXISTS `usuario` (
     KEY `usuario_recover` (`recover`),
     CONSTRAINT `usuario_ibfk_1` FOREIGN KEY (`rol_id`) REFERENCES `rol` (`id_rol`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------- accesos
+-- Log append-only de inicios de sesión exitosos. Alimenta la métrica de
+-- "ingresos del mes" del dashboard. Sin IP ni user-agent a propósito.
+CREATE TABLE IF NOT EXISTS `acceso` (
+    `id_acceso`  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `usuario_id` INT(11) NOT NULL,
+    `fecha`      DATETIME NOT NULL,
+    PRIMARY KEY (`id_acceso`),
+    KEY `acceso_fecha` (`fecha`),
+    KEY `acceso_usuario_fecha` (`usuario_id`, `fecha`),
+    CONSTRAINT `acceso_ibfk_1` FOREIGN KEY (`usuario_id`)
+        REFERENCES `usuario` (`id_usuario`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------- permisos por rol
+-- El catálogo de permisos vive en el enum PHP Permission; acá solo se guarda
+-- qué rol tiene cuál. Ver database/migration-2.4.sql para la siembra.
+CREATE TABLE IF NOT EXISTS `rol_permiso` (
+    `rol_id`  INT(11) NOT NULL,
+    `permiso` VARCHAR(60) NOT NULL,
+    PRIMARY KEY (`rol_id`, `permiso`),
+    KEY `rol_permiso_permiso` (`permiso`),
+    CONSTRAINT `rol_permiso_ibfk_1` FOREIGN KEY (`rol_id`)
+        REFERENCES `rol` (`id_rol`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

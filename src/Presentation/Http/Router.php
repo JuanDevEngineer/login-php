@@ -7,7 +7,9 @@ namespace App\Presentation\Http;
 use App\Application\Dto\AuthenticatedUser;
 use App\Application\UseCase\Auth\GetAuthenticatedUser;
 use App\Domain\Exception\AccessDeniedException;
+use App\Application\UseCase\Permission\UserCan;
 use App\Domain\Exception\DomainException;
+use App\Domain\ValueObject\Permission;
 use App\Infrastructure\Container;
 use App\Infrastructure\Security\CsrfGuard;
 
@@ -34,7 +36,8 @@ final class Router
 
     private function registerRoutes(): void
     {
-        $r = function (string $method, string $path, string $controller, string $action, string $access) {
+        /** @param string|Permission $access */
+        $r = function (string $method, string $path, string $controller, string $action, $access) {
             $this->routes[] = new Route($method, $path, $controller, $action, $access);
         };
 
@@ -54,29 +57,33 @@ final class Router
         $r('POST', '/password/reset',    'PasswordController', 'reset',       Route::PUBLIC_ACCESS);
 
         // --- Dashboard (requiere sesión) -----------------------------------
-        $r('GET',  '/dashboard',         'DashboardController', 'index',      Route::AUTH);
+        $r('GET',  '/dashboard',         'DashboardController', 'index',      Permission::PanelVer);
         $r('GET',  '/profile',           'DashboardController', 'profile',    Route::AUTH);
-        $r('GET',  '/users',             'DashboardController', 'manageUsers', Route::ADMIN);
+        $r('GET',  '/users',             'DashboardController', 'manageUsers', Permission::UsuariosVer);
 
         // --- Foto de perfil -------------------------------------------------
-        $r('POST', '/api/profile/image',        'UserApiController', 'uploadImage', Route::AUTH);
-        $r('POST', '/api/profile/image/delete', 'UserApiController', 'removeImage', Route::AUTH);
+        $r('POST', '/api/profile/image',        'UserApiController', 'uploadImage', Permission::PerfilEditar);
+        $r('POST', '/api/profile/image/delete', 'UserApiController', 'removeImage', Permission::PerfilEditar);
 
         // --- API JSON del gestor -------------------------------------------
-        $r('POST', '/api/users/create',  'UserApiController', 'create',        Route::ADMIN);
-        $r('POST', '/api/users/list',    'UserApiController', 'list',          Route::ADMIN);
-        $r('POST', '/api/users/find',    'UserApiController', 'find',          Route::ADMIN);
-        $r('POST', '/api/users/update',  'UserApiController', 'update',        Route::ADMIN);
-        $r('POST', '/api/users/toggle',  'UserApiController', 'toggleStatus',  Route::ADMIN);
-        $r('GET',  '/api/users/names',   'UserApiController', 'names',         Route::ADMIN);
+        $r('POST', '/api/users/create',  'UserApiController', 'create',        Permission::UsuariosCrear);
+        $r('POST', '/api/users/list',    'UserApiController', 'list',          Permission::UsuariosVer);
+        $r('POST', '/api/users/find',    'UserApiController', 'find',          Permission::UsuariosVer);
+        $r('POST', '/api/users/update',  'UserApiController', 'update',        Permission::UsuariosEditar);
+        $r('POST', '/api/users/toggle',  'UserApiController', 'toggleStatus',  Permission::UsuariosEstado);
+        $r('GET',  '/api/users/names',   'UserApiController', 'names',         Permission::UsuariosVer);
 
         // --- Roles (solo admin) --------------------------------------------
-        $r('GET',  '/roles',             'DashboardController', 'manageRoles', Route::ADMIN);
-        $r('GET',  '/api/roles',         'UserApiController', 'roles',         Route::ADMIN);
-        $r('GET',  '/api/roles/list',    'RoleApiController', 'list',          Route::ADMIN);
-        $r('POST', '/api/roles/create',  'RoleApiController', 'create',        Route::ADMIN);
-        $r('POST', '/api/roles/update',  'RoleApiController', 'update',        Route::ADMIN);
-        $r('POST', '/api/roles/delete',  'RoleApiController', 'delete',        Route::ADMIN);
+        $r('GET',  '/roles',             'DashboardController', 'manageRoles', Permission::RolesVer);
+        $r('GET',  '/api/roles',         'UserApiController', 'roles',         Permission::RolesVer);
+        $r('GET',  '/api/roles/list',    'RoleApiController', 'list',          Permission::RolesVer);
+        $r('POST', '/api/roles/create',  'RoleApiController', 'create',        Permission::RolesGestionar);
+        $r('POST', '/api/roles/update',  'RoleApiController', 'update',        Permission::RolesGestionar);
+        $r('POST', '/api/roles/delete',  'RoleApiController', 'delete',        Permission::RolesGestionar);
+
+        // --- Permisos por rol -----------------------------------------------
+        $r('GET',  '/roles/permisos',        'PermissionController', 'matrix', Permission::PermisosGestionar);
+        $r('POST', '/api/roles/permissions', 'PermissionController', 'sync',   Permission::PermisosGestionar);
     }
 
     public function dispatch(Request $request): Response
@@ -144,7 +151,7 @@ final class Router
 
     private function enforceAccess(Route $route, ?AuthenticatedUser $user, Request $request): ?Response
     {
-        if ($route->access === Route::PUBLIC_ACCESS) {
+        if ($route->isPublic()) {
             return null;
         }
 
@@ -154,10 +161,20 @@ final class Router
                 : Response::redirect($this->container->config()->baseUrl() . '/login');
         }
 
-        if ($route->access === Route::ADMIN && !$user->isAdmin()) {
-            return $this->expectsJson($request)
-                ? Response::json(['success' => false, 'error' => 'No autorizado.'], 403)
-                : $this->render('errors/403', ['message' => 'No tenés permiso para ver esta página.'], 403);
+        if ($route->requiresPermission()) {
+            /** @var Permission $permission */
+            $permission = $route->permission;
+
+            if (!$this->container->get(UserCan::class)->execute($user, $permission)) {
+                $message = sprintf(
+                    'No tenés el permiso necesario (%s) para esta acción.',
+                    $permission->label()
+                );
+
+                return $this->expectsJson($request)
+                    ? Response::json(['success' => false, 'error' => $message], 403)
+                    : $this->render('errors/403', ['message' => $message], 403);
+            }
         }
 
         return null;

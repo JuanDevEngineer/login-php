@@ -1,37 +1,82 @@
 <?php
+
+use App\Domain\ValueObject\Permission;
+
 /**
- * Menú lateral. Los ítems se declaran como datos y se pintan en un bucle: para
- * agregar una sección se toca este array, no el HTML.
+ * Menú lateral, filtrado por permisos.
+ *
+ * Cada entrada declara qué permiso exige y se oculta si el usuario no lo tiene.
+ * Antes se preguntaba por `isAdmin()`, lo que dejaba el menú fuera del sistema
+ * de permisos: un rol con `usuarios.ver` habría podido entrar por URL directa
+ * pero no habría visto el enlace.
+ *
+ * Ocultar no es proteger: quien tiene el enlace oculto tampoco pasa el control
+ * del router. Esto es solo para no ofrecer lo que va a devolver un 403.
  *
  * @var string $baseUrl
  * @var \App\Application\Dto\AuthenticatedUser|null $authUser
+ * @var \App\Domain\ValueObject\PermissionSet $userPermissions
  */
-$isAdmin = $authUser !== null && $authUser->isAdmin();
+$permissions = $userPermissions ?? \App\Domain\ValueObject\PermissionSet::empty();
+
+$can = static fn (Permission $p): bool => $permissions->has($p);
 
 $menu = [
     [
-        'label' => 'Inicio',
-        'icon'  => 'fas fa-tachometer-alt',
-        'url'   => $baseUrl . '/dashboard',
+        'label'      => 'Inicio',
+        'icon'       => 'fas fa-tachometer-alt',
+        'url'        => $baseUrl . '/dashboard',
+        'permission' => Permission::PanelVer,
     ],
     [
-        'label' => 'Mi perfil',
-        'icon'  => 'fas fa-id-card',
-        'url'   => $baseUrl . '/profile',
+        'label'      => 'Mi perfil',
+        'icon'       => 'fas fa-id-card',
+        'url'        => $baseUrl . '/profile',
+        'permission' => null, // el propio perfil no exige permiso
     ],
-];
-
-if ($isAdmin) {
-    $menu[] = [
+    [
         'label'    => 'Administración',
         'icon'     => 'fas fa-users-cog',
         'children' => [
-            ['label' => 'Gestor de usuarios', 'url' => $baseUrl . '/users'],
-            ['label' => 'Gestor de roles',    'url' => $baseUrl . '/roles'],
+            [
+                'label'      => 'Gestor de usuarios',
+                'url'        => $baseUrl . '/users',
+                'permission' => Permission::UsuariosVer,
+            ],
+            [
+                'label'      => 'Gestor de roles',
+                'url'        => $baseUrl . '/roles',
+                'permission' => Permission::RolesVer,
+            ],
+            [
+                'label'      => 'Permisos por rol',
+                'url'        => $baseUrl . '/roles/permisos',
+                'permission' => Permission::PermisosGestionar,
+            ],
         ],
-    ];
-}
+    ],
+];
 
+// Filtra hijos y descarta las secciones que se quedan sin ninguno.
+$visible = [];
+foreach ($menu as $item) {
+    if (isset($item['children'])) {
+        $children = array_values(array_filter(
+            $item['children'],
+            static fn (array $child): bool => $child['permission'] === null || $can($child['permission'])
+        ));
+
+        if ($children !== []) {
+            $item['children'] = $children;
+            $visible[] = $item;
+        }
+        continue;
+    }
+
+    if ($item['permission'] === null || $can($item['permission'])) {
+        $visible[] = $item;
+    }
+}
 ?>
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <a href="<?= e($baseUrl) ?>/dashboard" class="brand-link">
@@ -59,7 +104,7 @@ if ($isAdmin) {
 
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-                <?php foreach ($menu as $item): ?>
+                <?php foreach ($visible as $item): ?>
                     <?php if (empty($item['children'])): ?>
                         <li class="nav-item">
                             <a href="<?= e($item['url']) ?>" class="nav-link">

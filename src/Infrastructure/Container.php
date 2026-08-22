@@ -8,9 +8,13 @@ use App\Application\UseCase\Auth\GetAuthenticatedUser;
 use App\Application\UseCase\Auth\LoginUser;
 use App\Application\UseCase\Auth\LogoutUser;
 use App\Application\UseCase\Auth\RegisterUser;
+use App\Application\UseCase\Dashboard\GetDashboardMetrics;
 use App\Application\UseCase\Password\RequestPasswordReset;
 use App\Application\UseCase\Password\ResetPassword;
 use App\Application\UseCase\Password\ValidateRecoveryToken;
+use App\Application\UseCase\Permission\GetPermissionMatrix;
+use App\Application\UseCase\Permission\SyncRolePermissions;
+use App\Application\UseCase\Permission\UserCan;
 use App\Application\UseCase\Role\CreateRole;
 use App\Application\UseCase\Role\DeleteRole;
 use App\Application\UseCase\Role\ListRolesDetailed;
@@ -26,6 +30,7 @@ use App\Application\UseCase\User\ToggleUserStatus;
 use App\Application\UseCase\User\UpdateUser;
 use App\Domain\Port\Clock;
 use App\Domain\Port\ImageStorage;
+use App\Domain\Port\LoginLog;
 use App\Domain\Port\Mailer;
 use App\Domain\Port\PasswordHasher;
 use App\Domain\Port\RoleRepository;
@@ -37,6 +42,7 @@ use App\Infrastructure\Config\Config;
 use App\Infrastructure\Mail\NullMailer;
 use App\Infrastructure\Mail\PhpMailerMailer;
 use App\Infrastructure\Persistence\Pdo\PdoConnection;
+use App\Infrastructure\Persistence\Pdo\PdoLoginLog;
 use App\Infrastructure\Persistence\Pdo\PdoRoleRepository;
 use App\Infrastructure\Persistence\Pdo\PdoUserRepository;
 use App\Infrastructure\Security\BcryptPasswordHasher;
@@ -104,6 +110,9 @@ final class Container
             case RoleRepository::class:
                 return new PdoRoleRepository($this->get(PdoConnection::class));
 
+            case LoginLog::class:
+                return new PdoLoginLog($this->get(PdoConnection::class));
+
             case PasswordHasher::class:
                 return new BcryptPasswordHasher();
 
@@ -147,7 +156,16 @@ final class Container
                 return new LoginUser(
                     $this->get(UserRepository::class),
                     $this->get(PasswordHasher::class),
-                    $this->get(SessionStorage::class)
+                    $this->get(SessionStorage::class),
+                    $this->get(LoginLog::class),
+                    $this->get(Clock::class)
+                );
+
+            case GetDashboardMetrics::class:
+                return new GetDashboardMetrics(
+                    $this->get(UserRepository::class),
+                    $this->get(LoginLog::class),
+                    $this->get(Clock::class)
                 );
 
             case RegisterUser::class:
@@ -198,6 +216,18 @@ final class Container
             case ListRoles::class:
                 return new ListRoles($this->get(RoleRepository::class));
 
+            case UserCan::class:
+                return new UserCan(
+                    $this->get(UserRepository::class),
+                    $this->get(RoleRepository::class)
+                );
+
+            case GetPermissionMatrix::class:
+                return new GetPermissionMatrix($this->get(RoleRepository::class));
+
+            case SyncRolePermissions::class:
+                return new SyncRolePermissions($this->get(RoleRepository::class));
+
             case ListRolesDetailed::class:
                 return new ListRolesDetailed(
                     $this->get(RoleRepository::class),
@@ -240,13 +270,15 @@ final class Container
             case RemoveProfileImage::class:
                 return new RemoveProfileImage(
                     $this->get(UserRepository::class),
-                    $this->get(ImageStorage::class)
+                    $this->get(ImageStorage::class),
+                    $this->get(UserCan::class)
                 );
 
             case ChangeProfileImage::class:
                 return new ChangeProfileImage(
                     $this->get(UserRepository::class),
-                    $this->get(ImageStorage::class)
+                    $this->get(ImageStorage::class),
+                    $this->get(UserCan::class)
                 );
         }
 

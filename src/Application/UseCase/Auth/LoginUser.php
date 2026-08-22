@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace App\Application\UseCase\Auth;
 
 use App\Application\Dto\AuthenticatedUser;
+use App\Domain\Exception\AccessDeniedException;
 use App\Domain\Exception\InvalidCredentialsException;
+use App\Domain\Port\Clock;
+use App\Domain\Port\LoginLog;
 use App\Domain\Port\PasswordHasher;
 use App\Domain\Port\SessionStorage;
 use App\Domain\Port\UserRepository;
 use App\Domain\ValueObject\HashedPassword;
 use App\Domain\ValueObject\PlainPassword;
+use App\Domain\ValueObject\UserId;
 use App\Domain\ValueObject\Username;
 
 final class LoginUser
@@ -24,15 +28,13 @@ final class LoginUser
      */
     private const DECOY_HASH = '$2y$12$C6UzMDM.H6dfI/f/IKcEe.4Vv6ELIrMWiw6XKrlBmXqzWCG7Ky5.O';
 
-    private UserRepository $users;
-    private PasswordHasher $hasher;
-    private SessionStorage $session;
-
-    public function __construct(UserRepository $users, PasswordHasher $hasher, SessionStorage $session)
-    {
-        $this->users   = $users;
-        $this->hasher  = $hasher;
-        $this->session = $session;
+    public function __construct(
+        private readonly UserRepository $users,
+        private readonly PasswordHasher $hasher,
+        private readonly SessionStorage $session,
+        private readonly LoginLog $logins,
+        private readonly Clock $clock,
+    ) {
     }
 
     /**
@@ -61,7 +63,7 @@ final class LoginUser
         }
 
         if (!$user->isActive()) {
-            throw new \App\Domain\Exception\AccessDeniedException('La cuenta está desactivada.');
+            throw new AccessDeniedException('La cuenta está desactivada.');
         }
 
         // Rehash transparente si el coste de bcrypt cambió.
@@ -76,6 +78,27 @@ final class LoginUser
         $authenticated = AuthenticatedUser::fromEntity($user);
         $this->session->set(self::SESSION_KEY, $authenticated->toArray());
 
+        $this->recordAccess($user->id());
+
         return $authenticated;
+    }
+
+    /**
+     * Deja constancia del acceso. Va envuelto en try/catch a propósito: la
+     * bitácora es una métrica, no parte del contrato de autenticación. Si la
+     * tabla no existe todavía o la escritura falla, el usuario ya está
+     * autenticado y no tiene por qué quedarse fuera; el problema va al log.
+     */
+    private function recordAccess(?UserId $id): void
+    {
+        if ($id === null) {
+            return;
+        }
+
+        try {
+            $this->logins->record($id, $this->clock->now());
+        } catch (\Throwable $e) {
+            error_log('[login] no se pudo registrar el acceso: ' . $e->getMessage());
+        }
     }
 }

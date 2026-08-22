@@ -29,6 +29,7 @@ $breadcrumb = $breadcrumb ?? [];
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css">
     <link rel="stylesheet" href="<?= e($baseUrl) ?>/assets/toastr/toastr.min.css">
     <link rel="stylesheet" href="<?= e($baseUrl) ?>/public/css/profile.css">
+    <link rel="stylesheet" href="<?= e($baseUrl) ?>/public/css/dashboard-stats.css">
     <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
 </head>
 <body class="hold-transition sidebar-mini layout-fixed" data-base-url="<?= e($baseUrl) ?>">
@@ -36,7 +37,11 @@ $breadcrumb = $breadcrumb ?? [];
 
     <?= $view->partial('partials/dashboard/navbar', ['baseUrl' => $baseUrl, 'authUser' => $authUser]) ?>
 
-    <?= $view->partial('partials/dashboard/sidebar', ['baseUrl' => $baseUrl, 'authUser' => $authUser]) ?>
+    <?= $view->partial('partials/dashboard/sidebar', [
+        'baseUrl'         => $baseUrl,
+        'authUser'        => $authUser,
+        'userPermissions' => $userPermissions ?? \App\Domain\ValueObject\PermissionSet::empty(),
+    ]) ?>
 
     <div class="content-wrapper">
         <?= $view->partial('partials/dashboard/content-header', [
@@ -66,6 +71,7 @@ $breadcrumb = $breadcrumb ?? [];
 <script src="<?= e($baseUrl) ?>/public/js/usuarios.js"></script>
 <script src="<?= e($baseUrl) ?>/public/js/roles.js"></script>
 <script src="<?= e($baseUrl) ?>/public/js/profile.js"></script>
+<script src="<?= e($baseUrl) ?>/public/js/permisos.js"></script>
 <?= $sections['scripts'] ?? '' ?>
 </body>
 </html>

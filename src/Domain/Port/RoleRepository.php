@@ -29,4 +29,13 @@ interface RoleRepository
     public function save(Role $role): void;
 
     public function delete(Role $role): void;
+
+    /**
+     * Persiste el conjunto de permisos del rol, reemplazando el anterior.
+     *
+     * Va separado de save() porque toca otra tabla y porque casi todas las
+     * escrituras de rol no cambian permisos: acoplarlas obligaría a reescribir
+     * el pivote en cada renombrado.
+     */
+    public function syncPermissions(Role $role): void;
 }

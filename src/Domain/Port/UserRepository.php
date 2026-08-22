@@ -54,4 +54,12 @@ interface UserRepository
      * elimine un rol que todavía está en uso.
      */
     public function countByRole(int $roleId): int;
+
+    /**
+     * Total de usuarios. Con $active se filtra por estado; sin él, cuenta todos.
+     *
+     * Un solo método en lugar de countAll()/countActive()/countInactive():
+     * las tres preguntas son la misma con distinto filtro.
+     */
+    public function count(?bool $active = null): int;
 }

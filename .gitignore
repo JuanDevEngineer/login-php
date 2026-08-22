@@ -18,3 +18,7 @@ assets/uploads/*
 
 .phpunit.cache/
 .phpunit.result.cache
+
+## claude and others files
+.agents/*
+claude.md

@@ -199,6 +199,22 @@ final class PdoUserRepository implements UserRepository
         return (int) $stmt->fetchColumn();
     }
 
+    public function count(?bool $active = null): int
+    {
+        $sql = 'SELECT COUNT(*) FROM usuario';
+        if ($active !== null) {
+            $sql .= ' WHERE estado = :estado';
+        }
+
+        $stmt = $this->connection->pdo()->prepare($sql);
+        if ($active !== null) {
+            $stmt->bindValue(':estado', $active ? 1 : 0, \PDO::PARAM_INT);
+        }
+        $stmt->execute();
+
+        return (int) $stmt->fetchColumn();
+    }
+
     // ------------------------------------------------------------- escrituras
 
     public function add(User $user): User

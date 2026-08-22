@@ -1,0 +1,19 @@
+parameters:
+    level: 9
+
+    paths:
+        - src
+        - tests
+
+    # Las plantillas son PHP pero no clases: su análisis no aporta y genera
+    # ruido por las variables que inyecta el renderizador.
+    excludePaths:
+        - resources/views/*
+
+    # El proyecto no usa un framework con contenedor tipado: Container::get()
+    # devuelve object y lo estrechamos con @template en el propio método.
+    treatPhpDocTypesAsCertain: false
+
+    ignoreErrors:
+        # El autoloader de reserva y el bootstrap trabajan con rutas dinámicas.
+        - '#Anonymous function has an unused use#'
