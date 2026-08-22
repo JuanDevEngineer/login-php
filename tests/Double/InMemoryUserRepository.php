@@ -101,7 +101,7 @@ final class InMemoryUserRepository implements UserRepository
             $user->role(),
             $user->status(),
             $user->registeredAt(),
-            $user->imageUrl(),
+            $user->avatar(),
             $user->recoveryToken()
         );
 

@@ -16,15 +16,15 @@ final class AuthenticatedUser
     public string $username;
     public string $email;
     public string $role;
-    public ?string $imageUrl;
+    public ?string $avatar;
 
-    public function __construct(int $id, string $username, string $email, string $role, ?string $imageUrl)
+    public function __construct(int $id, string $username, string $email, string $role, ?string $avatar)
     {
         $this->id       = $id;
         $this->username = $username;
         $this->email    = $email;
         $this->role     = $role;
-        $this->imageUrl = $imageUrl;
+        $this->avatar   = $avatar;
     }
 
     public static function fromEntity(User $user): self
@@ -34,7 +34,7 @@ final class AuthenticatedUser
             $user->username()->value(),
             $user->email()->value(),
             $user->role()->name()->value(),
-            $user->imageUrl()
+            $user->avatar()
         );
     }
 
@@ -50,7 +50,7 @@ final class AuthenticatedUser
             'username'  => $this->username,
             'email'     => $this->email,
             'role'      => $this->role,
-            'imageUrl'  => $this->imageUrl,
+            'avatar'    => $this->avatar,
         ];
     }
 
@@ -61,7 +61,7 @@ final class AuthenticatedUser
             (string) ($data['username'] ?? ''),
             (string) ($data['email'] ?? ''),
             (string) ($data['role'] ?? ''),
-            $data['imageUrl'] ?? null
+            $data['avatar'] ?? null
         );
     }
 }

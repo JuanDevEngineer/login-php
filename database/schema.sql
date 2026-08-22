@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS `usuario` (
     `registro`   DATE DEFAULT NULL,
     `recover`    VARCHAR(255) DEFAULT NULL COMMENT 'selector:hash_sha256:expira_unix',
     `estado`     TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1 activo, 0 inactivo',
-    `imagen_url` VARCHAR(255) DEFAULT NULL,
+    `imagen_url` VARCHAR(255) DEFAULT NULL
+        COMMENT 'Solo el nombre del archivo en assets/uploads, nunca una URL',
     PRIMARY KEY (`id_usuario`),
     UNIQUE KEY `usuario_username_unique` (`username`),
     UNIQUE KEY `usuario_email_unique` (`email`),

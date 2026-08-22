@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Application\UseCase\User;
 
 use App\Application\Dto\AuthenticatedUser;
-use App\Application\Dto\UploadedImage;
 use App\Domain\Exception\AccessDeniedException;
 use App\Domain\Exception\UserNotFoundException;
 use App\Domain\Port\ImageStorage;
 use App\Domain\Port\UserRepository;
 use App\Domain\ValueObject\UserId;
 
-final class ChangeProfileImage
+/** Quita la foto de perfil y borra el archivo del disco. */
+final class RemoveProfileImage
 {
     private UserRepository $users;
     private ImageStorage $storage;
@@ -26,13 +26,11 @@ final class ChangeProfileImage
     /**
      * @throws AccessDeniedException|UserNotFoundException
      */
-    public function execute(AuthenticatedUser $actor, string $rawTargetId, UploadedImage $image): string
+    public function execute(AuthenticatedUser $actor, string $rawTargetId): void
     {
         $targetId = UserId::fromMixed($rawTargetId);
 
-        // Solo el dueño de la cuenta o un admin pueden cambiar la foto.
-        $isSelf = $actor->id === $targetId->value();
-        if (!$isSelf && !$actor->isAdmin()) {
+        if ($actor->id !== $targetId->value() && !$actor->isAdmin()) {
             throw AccessDeniedException::create();
         }
 
@@ -41,19 +39,17 @@ final class ChangeProfileImage
             throw UserNotFoundException::withId($targetId->value());
         }
 
-        $previous = $user->avatar();
-
-        $filename = $this->storage->store($image);
-
-        $user->changeAvatar($filename);
-        $this->users->save($user);
-
-        // La foto anterior ya no la referencia nadie: si no la borramos, cada
-        // cambio de avatar deja un archivo muerto en assets/uploads.
-        if ($previous !== null && $previous !== $filename) {
-            $this->storage->delete($previous);
+        $current = $user->avatar();
+        if ($current === null) {
+            return; // Ya no tenía foto: nada que hacer.
         }
 
-        return $filename;
+        // Primero la base de datos. Si el borrado del archivo fallara después,
+        // lo peor que queda es un archivo huérfano; al revés tendríamos una
+        // fila apuntando a un archivo inexistente, que es peor.
+        $user->removeAvatar();
+        $this->users->save($user);
+
+        $this->storage->delete($current);
     }
 }

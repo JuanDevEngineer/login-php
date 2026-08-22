@@ -17,15 +17,16 @@ final class SpyImageStorage implements ImageStorage
 
     public function store(UploadedImage $image): string
     {
-        $url = 'http://test/assets/uploads/' . count($this->stored) . '.jpg';
-        $this->stored[] = $url;
+        // El puerto devuelve el NOMBRE del archivo, no una URL.
+        $filename = 'avatar-' . count($this->stored) . '.jpg';
+        $this->stored[] = $filename;
 
-        return $url;
+        return $filename;
     }
 
-    public function delete(string $url): void
+    public function delete(string $identifier): void
     {
-        $this->deleted[] = $url;
+        $this->deleted[] = $identifier;
     }
 
     /** Archivos guardados que no fueron borrados después. */

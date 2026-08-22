@@ -21,6 +21,7 @@ use App\Application\UseCase\User\FindUser;
 use App\Application\UseCase\User\ListRoles;
 use App\Application\UseCase\User\ListUserNames;
 use App\Application\UseCase\User\ListUsers;
+use App\Application\UseCase\User\RemoveProfileImage;
 use App\Application\UseCase\User\ToggleUserStatus;
 use App\Application\UseCase\User\UpdateUser;
 use App\Domain\Port\Clock;
@@ -125,7 +126,6 @@ final class Container
             case ImageStorage::class:
                 return new LocalImageStorage(
                     (string) $this->config->get('uploads.path'),
-                    $this->config->baseUrl(),
                     (int) $this->config->get('uploads.max')
                 );
 
@@ -139,6 +139,7 @@ final class Container
                 $renderer = new ViewRenderer($this->config->get('app.root') . '/resources/views');
                 $renderer->share('baseUrl', $this->config->baseUrl());
                 $renderer->share('csrf', $this->get(CsrfGuard::class));
+                $renderer->share('uploadMaxBytes', (int) $this->config->get('uploads.max'));
                 return $renderer;
 
             // ------------------------------------------------- casos de uso
@@ -234,6 +235,12 @@ final class Container
                     $this->get(PasswordHasher::class),
                     $this->get(ImageStorage::class),
                     $this->get(Clock::class)
+                );
+
+            case RemoveProfileImage::class:
+                return new RemoveProfileImage(
+                    $this->get(UserRepository::class),
+                    $this->get(ImageStorage::class)
                 );
 
             case ChangeProfileImage::class:

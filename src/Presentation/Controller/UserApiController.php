@@ -12,9 +12,12 @@ use App\Application\UseCase\User\FindUser;
 use App\Application\UseCase\User\ListRoles;
 use App\Application\UseCase\User\ListUserNames;
 use App\Application\UseCase\User\ListUsers;
+use App\Application\UseCase\User\RemoveProfileImage;
 use App\Application\UseCase\User\ToggleUserStatus;
 use App\Application\UseCase\User\UpdateUser;
+use App\Application\UseCase\Auth\LoginUser;
 use App\Domain\Exception\DomainException;
+use App\Domain\Port\SessionStorage;
 use App\Presentation\Http\Request;
 use App\Presentation\Http\Response;
 
@@ -123,32 +126,77 @@ final class UserApiController extends AbstractController
             return $this->fail('No autenticado.', 401);
         }
 
+        $targetId = $request->input('id') !== '' ? $request->input('id') : (string) $this->user->id;
+
         try {
             $image = UploadedImage::fromPhpUpload($request->file('profile'));
 
-            $url = $this->useCase(ChangeProfileImage::class)->execute(
+            $filename = $this->useCase(ChangeProfileImage::class)->execute(
                 $this->user,
-                $request->input('id') !== '' ? $request->input('id') : (string) $this->user->id,
+                $targetId,
                 $image
             );
         } catch (DomainException $e) {
             return $this->fail($e->getMessage());
         }
 
-        // Si cambió su propia foto, refrescamos la copia en sesión para que la
-        // vea de inmediato sin volver a iniciar sesión.
-        if ($this->user->id === (int) ($request->input('id') ?: $this->user->id)) {
-            $session = $this->container->get(\App\Domain\Port\SessionStorage::class);
-            $data    = $session->get(\App\Application\UseCase\Auth\LoginUser::SESSION_KEY, []);
-            if (is_array($data)) {
-                $data['imageUrl'] = $url;
-                $session->set(\App\Application\UseCase\Auth\LoginUser::SESSION_KEY, $data);
-            }
-        }
+        $this->refreshSessionAvatar($targetId, $filename);
 
         return $this->ok([
-            'message'  => 'Imagen actualizada.',
-            'imageUrl' => $url,
+            'message'   => 'Foto actualizada.',
+            'avatar'    => $filename,
+            'avatarUrl' => $this->avatarUrl($filename),
         ]);
+    }
+
+    public function removeImage(Request $request): Response
+    {
+        if ($this->user === null) {
+            return $this->fail('No autenticado.', 401);
+        }
+
+        $targetId = $request->input('id') !== '' ? $request->input('id') : (string) $this->user->id;
+
+        try {
+            $this->useCase(RemoveProfileImage::class)->execute($this->user, $targetId);
+        } catch (DomainException $e) {
+            return $this->fail($e->getMessage());
+        }
+
+        $this->refreshSessionAvatar($targetId, null);
+
+        return $this->ok([
+            'message'   => 'Foto eliminada.',
+            'avatar'    => null,
+            'avatarUrl' => $this->avatarUrl(null),
+        ]);
+    }
+
+    /**
+     * Si el usuario cambió su propia foto, actualizamos la copia que vive en la
+     * sesión para que el cambio se vea sin volver a iniciar sesión.
+     */
+    private function refreshSessionAvatar(string $targetId, ?string $filename): void
+    {
+        if ($this->user === null || $this->user->id !== (int) $targetId) {
+            return;
+        }
+
+        $session = $this->container->get(SessionStorage::class);
+        $data    = $session->get(LoginUser::SESSION_KEY, []);
+
+        if (is_array($data)) {
+            $data['avatar'] = $filename;
+            $session->set(LoginUser::SESSION_KEY, $data);
+        }
+    }
+
+    private function avatarUrl(?string $filename): string
+    {
+        if ($filename === null || $filename === '') {
+            return $this->baseUrl() . '/assets/admin/dist/img/user2-160x160.jpg';
+        }
+
+        return $this->baseUrl() . '/assets/uploads/' . rawurlencode($filename);
     }
 }

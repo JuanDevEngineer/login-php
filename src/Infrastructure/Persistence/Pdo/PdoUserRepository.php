@@ -220,8 +220,8 @@ final class PdoUserRepository implements UserRepository
         $stmt->bindValue(':estado', $user->status()->toInt(), \PDO::PARAM_INT);
         $stmt->bindValue(
             ':imagen_url',
-            $user->imageUrl(),
-            $user->imageUrl() === null ? \PDO::PARAM_NULL : \PDO::PARAM_STR
+            $user->avatar(),
+            $user->avatar() === null ? \PDO::PARAM_NULL : \PDO::PARAM_STR
         );
 
         try {
@@ -243,7 +243,7 @@ final class PdoUserRepository implements UserRepository
             $user->role(),
             $user->status(),
             $user->registeredAt(),
-            $user->imageUrl(),
+            $user->avatar(),
             $user->recoveryToken()
         );
     }
@@ -275,8 +275,8 @@ final class PdoUserRepository implements UserRepository
         $stmt->bindValue(':estado', $user->status()->toInt(), \PDO::PARAM_INT);
         $stmt->bindValue(
             ':imagen_url',
-            $user->imageUrl(),
-            $user->imageUrl() === null ? \PDO::PARAM_NULL : \PDO::PARAM_STR
+            $user->avatar(),
+            $user->avatar() === null ? \PDO::PARAM_NULL : \PDO::PARAM_STR
         );
         $stmt->bindValue(
             ':recover',

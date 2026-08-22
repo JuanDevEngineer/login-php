@@ -80,9 +80,9 @@ final class CreateUser
         }
 
         // ---- 2. Recién ahora, guardar la imagen ----------------------------
-        $imageUrl = null;
+        $avatar = null;
         if ($data->image !== null) {
-            $imageUrl = $this->storage->store($data->image);
+            $avatar = $this->storage->store($data->image);
         }
 
         // ---- 3. Insertar ---------------------------------------------------
@@ -94,7 +94,7 @@ final class CreateUser
                 $role,
                 $data->active ? UserStatus::active() : UserStatus::inactive(),
                 $this->clock->now(),
-                $imageUrl
+                $avatar
             );
 
             $user = $this->users->add($user);
@@ -103,8 +103,8 @@ final class CreateUser
             // tomar el mismo usuario o correo, y el índice único lo rechaza.
             // El repositorio traduce esa violación a UserAlreadyExistsException;
             // acá solo nos ocupamos de que la imagen ya subida no quede huérfana.
-            if ($imageUrl !== null) {
-                $this->storage->delete($imageUrl);
+            if ($avatar !== null) {
+                $this->storage->delete($avatar);
             }
 
             throw $e;

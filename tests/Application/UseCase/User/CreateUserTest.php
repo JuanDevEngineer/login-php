@@ -130,7 +130,7 @@ final class CreateUserTest extends TestCase
         ]));
 
         self::assertCount(1, $this->storage->stored);
-        self::assertSame($this->storage->stored[0], $result['imagen_url']);
+        self::assertSame($this->storage->stored[0], $result['avatar']);
         // El archivo se queda: lo referencia el usuario recién creado.
         self::assertSame([], $this->storage->deleted);
     }
@@ -180,7 +180,7 @@ final class CreateUserTest extends TestCase
     {
         $result = $this->useCase->execute($this->data());
 
-        self::assertNull($result['imagen_url']);
+        self::assertNull($result['avatar']);
         self::assertSame([], $this->storage->stored);
     }
 }

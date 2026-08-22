@@ -77,21 +77,40 @@ final class ViewRenderer
     /**
      * @param array<string, mixed> $data
      */
-    private function renderFile(string $file, array $data): string
+    private function renderFile(string $__path, array $__vars): string
     {
-        if (!is_file($file)) {
-            throw new \RuntimeException('Vista no encontrada: ' . $file);
+        if (!is_file($__path)) {
+            throw new \RuntimeException('Vista no encontrada: ' . $__path);
         }
+
+        $__vars = array_merge($this->shared, $__vars);
 
         // $view queda disponible dentro de la plantilla para llamar a
         // $view->partial(), $view->layout(), etc.
-        $view = $this;
+        $__vars['view'] = $this;
 
-        extract(array_merge($this->shared, $data), EXTR_SKIP);
+        // Nombres reservados del propio renderizador: una plantilla no puede
+        // pisarlos o rompería el include.
+        unset($__vars['__path'], $__vars['__vars']);
+
+        // La plantilla se incluye dentro de una función estática cuyo ámbito
+        // solo contiene $__path y $__vars. Antes se incluía aquí mismo, donde
+        // ya existían locales como $file y $data: con EXTR_SKIP, extract()
+        // omitía EN SILENCIO cualquier variable de la vista que se llamara
+        // igual. Por eso components/avatar.php recibía la ruta de la plantilla
+        // en lugar del nombre de la foto, y el <img> apuntaba a
+        // /assets/uploads/D:\laragon\...\avatar.php
+        //
+        // EXTR_OVERWRITE, además, hace que los datos de la vista siempre ganen,
+        // en lugar de perderse sin aviso.
+        $render = static function (string $__path, array $__vars): void {
+            extract($__vars, EXTR_OVERWRITE);
+            include $__path;
+        };
 
         ob_start();
         try {
-            include $file;
+            $render($__path, $__vars);
         } catch (\Throwable $e) {
             ob_end_clean();
             throw $e;

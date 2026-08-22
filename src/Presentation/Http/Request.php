@@ -83,6 +83,53 @@ final class Request
         return $this->files[$key] ?? null;
     }
 
+    /**
+     * ¿PHP descartó el cuerpo por superar post_max_size?
+     *
+     * Cuando eso pasa, $_POST y $_FILES quedan vacíos pero CONTENT_LENGTH sigue
+     * informando el tamaño real. Es la única forma de distinguir "subieron algo
+     * enorme" de "mandaron un formulario vacío", y sin distinguirlo el error
+     * aparece como un fallo de CSRF.
+     */
+    public function wasTruncatedByPostMaxSize(): bool
+    {
+        if ($this->body !== [] || $this->files !== []) {
+            return false;
+        }
+
+        $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        if ($contentLength <= 0) {
+            return false;
+        }
+
+        $limit = self::toBytes((string) ini_get('post_max_size'));
+
+        return $limit > 0 && $contentLength > $limit;
+    }
+
+    /** Convierte "8M", "512K", "1G" a bytes. */
+    private static function toBytes(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return 0;
+        }
+
+        $unit   = strtolower($value[strlen($value) - 1]);
+        $number = (int) $value;
+
+        switch ($unit) {
+            case 'g':
+                return $number * 1024 * 1024 * 1024;
+            case 'm':
+                return $number * 1024 * 1024;
+            case 'k':
+                return $number * 1024;
+            default:
+                return $number;
+        }
+    }
+
     public function isAjax(): bool
     {
         return strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';

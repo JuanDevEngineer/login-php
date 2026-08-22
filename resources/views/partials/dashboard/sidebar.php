@@ -32,9 +32,6 @@ if ($isAdmin) {
     ];
 }
 
-$avatar = $authUser !== null && $authUser->imageUrl !== null
-    ? $authUser->imageUrl
-    : $baseUrl . '/assets/admin/dist/img/user2-160x160.jpg';
 ?>
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <a href="<?= e($baseUrl) ?>/dashboard" class="brand-link">
@@ -46,7 +43,12 @@ $avatar = $authUser !== null && $authUser->imageUrl !== null
     <div class="sidebar">
         <div class="user-panel mt-3 pb-3 mb-3 d-flex">
             <div class="image">
-                <img src="<?= e($avatar) ?>" class="img-circle elevation-2" alt="Avatar">
+                <?= $view->partial('components/avatar', [
+                    'avatarFile' => $authUser !== null ? $authUser->avatar : null,
+                    'baseUrl' => $baseUrl,
+                    'size'    => '34',
+                    'classes' => 'img-circle elevation-2',
+                ]) ?>
             </div>
             <div class="info">
                 <a href="<?= e($baseUrl) ?>/profile" class="d-block">

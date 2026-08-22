@@ -9,32 +9,31 @@ use App\Domain\Exception\InvalidImageException;
 use App\Domain\Port\ImageStorage;
 
 /**
- * Guarda imágenes en assets/uploads.
+ * Guarda imágenes en assets/uploads y devuelve solo el nombre del archivo.
  *
- * Reglas: el tipo se determina con finfo (nunca con el que declara el
- * navegador), la extensión sale de una whitelist indexada por MIME real y el
- * nombre del archivo se genera con random_bytes, así el nombre original del
- * cliente nunca toca el sistema de archivos.
+ * Reglas de seguridad: el tipo se determina con finfo (nunca con el que declara
+ * el navegador), la extensión sale de una whitelist indexada por MIME real y el
+ * nombre se genera con random_bytes, así el nombre original del cliente nunca
+ * toca el sistema de archivos.
  */
 final class LocalImageStorage implements ImageStorage
 {
+    /** MIME real => extensión con la que guardamos. */
     private const ALLOWED = [
         'image/jpeg' => 'jpg',
-        'image/pjpeg'=> 'jpg',
+        'image/pjpeg' => 'jpg',
         'image/png'  => 'png',
         'image/gif'  => 'gif',
         'image/webp' => 'webp',
     ];
 
     private string $directory;
-    private string $publicBaseUrl;
     private int $maxBytes;
 
-    public function __construct(string $directory, string $publicBaseUrl, int $maxBytes)
+    public function __construct(string $directory, int $maxBytes)
     {
-        $this->directory     = rtrim($directory, '/');
-        $this->publicBaseUrl = rtrim($publicBaseUrl, '/');
-        $this->maxBytes      = $maxBytes;
+        $this->directory = rtrim($directory, '/');
+        $this->maxBytes  = $maxBytes;
     }
 
     public function store(UploadedImage $image): string
@@ -43,7 +42,10 @@ final class LocalImageStorage implements ImageStorage
             throw InvalidImageException::uploadFailed();
         }
 
-        if ($image->sizeInBytes <= 0 || $image->sizeInBytes > $this->maxBytes) {
+        if ($image->sizeInBytes <= 0) {
+            throw InvalidImageException::uploadFailed();
+        }
+        if ($image->sizeInBytes > $this->maxBytes) {
             throw InvalidImageException::tooLarge($this->maxBytes);
         }
 
@@ -52,8 +54,9 @@ final class LocalImageStorage implements ImageStorage
             throw InvalidImageException::unsupportedType($mime);
         }
 
-        // Segunda comprobación: que realmente sea una imagen decodificable.
-        if (getimagesize($image->temporaryPath) === false) {
+        // Segunda comprobación: que además de tener MIME de imagen, sea
+        // realmente decodificable. Un archivo con cabecera falsificada no pasa.
+        if (@getimagesize($image->temporaryPath) === false) {
             throw InvalidImageException::unsupportedType($mime);
         }
 
@@ -72,44 +75,34 @@ final class LocalImageStorage implements ImageStorage
 
         @chmod($target, 0644);
 
-        return $this->publicBaseUrl . '/assets/uploads/' . $filename;
+        return $filename;
     }
 
-    public function delete(string $url): void
+    public function delete(string $identifier): void
     {
-        $prefix = $this->publicBaseUrl . '/assets/uploads/';
-
-        // Solo borramos cosas que este mismo storage generó. Si la URL no tiene
-        // nuestro prefijo, no es nuestra y no la tocamos.
-        if (strpos($url, $prefix) !== 0) {
+        if ($identifier === '') {
             return;
         }
 
-        $filename = substr($url, strlen($prefix));
-
         // basename() corta cualquier intento de traversal ("../../index.php").
-        // Aunque la URL la generamos nosotros, este método es público y no
-        // conviene confiar en el argumento.
-        $filename = basename($filename);
+        $filename = basename($identifier);
         if ($filename === '' || $filename === '.' || $filename === '..') {
             return;
         }
 
-        $target = $this->directory . '/' . $filename;
-
-        // Confirmamos que el archivo resuelto sigue estando dentro del
-        // directorio de uploads antes de borrar nada.
-        $realTarget    = realpath($target);
+        $realTarget    = realpath($this->directory . '/' . $filename);
         $realDirectory = realpath($this->directory);
 
         if ($realTarget === false || $realDirectory === false) {
             return;
         }
+
+        // Confirmamos que el archivo resuelto sigue dentro del directorio de
+        // subidas antes de borrar nada.
         if (strpos($realTarget, $realDirectory . DIRECTORY_SEPARATOR) !== 0) {
             return;
         }
 
-        // Borrar es idempotente: que el archivo ya no esté no es un error.
         if (is_file($realTarget)) {
             @unlink($realTarget);
         }
@@ -130,7 +123,7 @@ final class LocalImageStorage implements ImageStorage
         }
 
         if (!mkdir($this->directory, 0755, true) && !is_dir($this->directory)) {
-            throw new \RuntimeException('No se pudo crear el directorio de uploads.');
+            throw new \RuntimeException('No se pudo crear el directorio de subidas.');
         }
     }
 }

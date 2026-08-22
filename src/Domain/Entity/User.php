@@ -29,7 +29,7 @@ final class User
     private Role $role;
     private UserStatus $status;
     private ?\DateTimeImmutable $registeredAt;
-    private ?string $imageUrl;
+    private ?string $avatar;
     private ?RecoveryToken $recoveryToken;
 
     public function __construct(
@@ -40,7 +40,7 @@ final class User
         Role $role,
         UserStatus $status,
         ?\DateTimeImmutable $registeredAt = null,
-        ?string $imageUrl = null,
+        ?string $avatar = null,
         ?RecoveryToken $recoveryToken = null
     ) {
         $this->id            = $id;
@@ -50,7 +50,7 @@ final class User
         $this->role          = $role;
         $this->status        = $status;
         $this->registeredAt  = $registeredAt;
-        $this->imageUrl      = $imageUrl;
+        $this->avatar        = $avatar;
         $this->recoveryToken = $recoveryToken;
     }
 
@@ -90,7 +90,7 @@ final class User
         Role $role,
         UserStatus $status,
         \DateTimeImmutable $registeredAt,
-        ?string $imageUrl = null
+        ?string $avatar = null
     ): self {
         return new self(
             null,
@@ -100,7 +100,7 @@ final class User
             $role,
             $status,
             $registeredAt,
-            $imageUrl
+            $avatar
         );
     }
 
@@ -141,9 +141,13 @@ final class User
         return $this->registeredAt;
     }
 
-    public function imageUrl(): ?string
+    /**
+     * Nombre del archivo de la foto, no una URL. La URL la arma la vista, así
+     * las fotos no se rompen si cambia BASE_URL o se mueve el proyecto.
+     */
+    public function avatar(): ?string
     {
-        return $this->imageUrl;
+        return $this->avatar;
     }
 
     public function recoveryToken(): ?RecoveryToken
@@ -188,9 +192,14 @@ final class User
         $this->role     = $role;
     }
 
-    public function changeProfileImage(string $imageUrl): void
+    public function changeAvatar(string $filename): void
     {
-        $this->imageUrl = $imageUrl;
+        $this->avatar = $filename;
+    }
+
+    public function removeAvatar(): void
+    {
+        $this->avatar = null;
     }
 
     public function toggleStatus(): void

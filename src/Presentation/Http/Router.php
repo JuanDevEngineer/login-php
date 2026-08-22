@@ -58,6 +58,10 @@ final class Router
         $r('GET',  '/profile',           'DashboardController', 'profile',    Route::AUTH);
         $r('GET',  '/users',             'DashboardController', 'manageUsers', Route::ADMIN);
 
+        // --- Foto de perfil -------------------------------------------------
+        $r('POST', '/api/profile/image',        'UserApiController', 'uploadImage', Route::AUTH);
+        $r('POST', '/api/profile/image/delete', 'UserApiController', 'removeImage', Route::AUTH);
+
         // --- API JSON del gestor -------------------------------------------
         $r('POST', '/api/users/create',  'UserApiController', 'create',        Route::ADMIN);
         $r('POST', '/api/users/list',    'UserApiController', 'list',          Route::ADMIN);
@@ -73,7 +77,6 @@ final class Router
         $r('POST', '/api/roles/create',  'RoleApiController', 'create',        Route::ADMIN);
         $r('POST', '/api/roles/update',  'RoleApiController', 'update',        Route::ADMIN);
         $r('POST', '/api/roles/delete',  'RoleApiController', 'delete',        Route::ADMIN);
-        $r('POST', '/api/profile/image', 'UserApiController', 'uploadImage',   Route::AUTH);
     }
 
     public function dispatch(Request $request): Response
@@ -89,6 +92,13 @@ final class Router
         $denied = $this->enforceAccess($route, $user, $request);
         if ($denied !== null) {
             return $denied;
+        }
+
+        // Si el cuerpo excedió post_max_size, PHP descarta $_POST y $_FILES
+        // enteros. Sin esta comprobación el fallo saldría como "token CSRF
+        // inválido", que manda a buscar el problema al lugar equivocado.
+        if ($request->isPost() && $request->wasTruncatedByPostMaxSize()) {
+            return $this->payloadTooLarge($request);
         }
 
         // CSRF en todo lo que muta estado.
@@ -157,6 +167,20 @@ final class Router
     {
         return $this->container->get(CsrfGuard::class)
             ->isValid($request->raw(CsrfGuard::FIELD_NAME, ''));
+    }
+
+    private function payloadTooLarge(Request $request): Response
+    {
+        $limit = (string) ini_get('post_max_size');
+        $message = sprintf(
+            'El archivo es demasiado grande. El servidor acepta como máximo %s por petición '
+            . '(post_max_size en php.ini).',
+            $limit !== '' ? $limit : 'el límite configurado'
+        );
+
+        return $this->expectsJson($request)
+            ? Response::json(['success' => false, 'error' => $message], 413)
+            : $this->render('errors/generic', ['message' => $message], 413);
     }
 
     private function csrfFailure(Request $request): Response

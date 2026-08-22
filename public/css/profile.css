@@ -1,0 +1,180 @@
+/* ==========================================================================
+   Perfil — widget de avatar
+   ========================================================================== */
+
+.card-avatar .card-body {
+    padding: 1.75rem 1.25rem;
+}
+
+/* Contenedor del avatar + botón de cámara */
+.avatar-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+/* Marco redondo que recorta la foto y aloja el velo y la pista de arrastre */
+.avatar-frame {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    margin: 0 auto;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #e9ecef;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .15);
+    transition: box-shadow .2s ease, transform .2s ease;
+}
+
+.avatar-wrap:hover .avatar-frame {
+    box-shadow: 0 4px 18px rgba(0, 0, 0, .25);
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 50%;
+}
+
+/* La vista previa se superpone a la foto actual mientras se confirma */
+.avatar-preview {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* -------------------------------------------------- botón de cámara */
+.avatar-camera {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    width: 44px;
+    height: 44px;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: #343a40;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .2s ease, transform .15s ease;
+}
+
+.avatar-camera:hover {
+    background: #17a2b8;
+    transform: scale(1.08);
+}
+
+.avatar-camera:focus {
+    outline: 3px solid rgba(23, 162, 184, .5);
+    outline-offset: 2px;
+}
+
+/* -------------------------------------------------- velo de progreso */
+.avatar-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, .55);
+    color: #fff;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    border-radius: 50%;
+}
+
+.avatar-overlay.is-visible {
+    display: flex;
+}
+
+.avatar-spinner {
+    width: 42px;
+    height: 42px;
+    border: 4px solid rgba(255, 255, 255, .3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: avatar-spin .8s linear infinite;
+}
+
+@keyframes avatar-spin {
+    to { transform: rotate(360deg); }
+}
+
+.avatar-progress-text {
+    font-size: .85rem;
+    font-weight: 600;
+}
+
+/* Respeta a quien pidió menos animación en el sistema */
+@media (prefers-reduced-motion: reduce) {
+    .avatar-spinner { animation: none; }
+    .avatar-frame, .avatar-camera { transition: none; }
+}
+
+/* -------------------------------------------------- arrastrar y soltar */
+.avatar-drop-hint {
+    position: absolute;
+    inset: 0;
+    background: rgba(23, 162, 184, .85);
+    color: #fff;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    border-radius: 50%;
+    font-size: .85rem;
+    font-weight: 600;
+    text-align: center;
+    padding: 0 1rem;
+}
+
+.avatar-drop-hint i {
+    font-size: 1.5rem;
+}
+
+.avatar-wrap.is-dragging .avatar-drop-hint {
+    display: flex;
+}
+
+.avatar-wrap.is-dragging .avatar-frame {
+    transform: scale(1.03);
+}
+
+/* -------------------------------------------------- textos auxiliares */
+.avatar-hint {
+    line-height: 1.5;
+}
+
+#avatar-filename {
+    word-break: break-all;
+    color: #495057;
+}
+
+/* -------------------------------------------------- datos de la cuenta */
+.profile-data dt {
+    font-weight: 600;
+    color: #6c757d;
+    padding-bottom: .5rem;
+}
+
+.profile-data dd {
+    padding-bottom: .5rem;
+    margin-bottom: 0;
+}
+
+@media (max-width: 575.98px) {
+    .avatar-frame {
+        width: 140px;
+        height: 140px;
+    }
+    .avatar-camera {
+        width: 38px;
+        height: 38px;
+        font-size: .9rem;
+    }
+}

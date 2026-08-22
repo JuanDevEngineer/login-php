@@ -17,7 +17,7 @@ final class UserView
     public int $status;
     public string $statusLabel;
     public ?string $registeredAt;
-    public ?string $imageUrl;
+    public ?string $avatar;
 
     public function __construct(
         int $id,
@@ -28,7 +28,7 @@ final class UserView
         int $status,
         string $statusLabel,
         ?string $registeredAt,
-        ?string $imageUrl
+        ?string $avatar
     ) {
         $this->id           = $id;
         $this->username     = $username;
@@ -38,7 +38,7 @@ final class UserView
         $this->status       = $status;
         $this->statusLabel  = $statusLabel;
         $this->registeredAt = $registeredAt;
-        $this->imageUrl     = $imageUrl;
+        $this->avatar       = $avatar;
     }
 
     public static function fromEntity(User $user): self
@@ -55,7 +55,7 @@ final class UserView
             $user->status()->toInt(),
             $user->status()->label(),
             $user->registeredAt() !== null ? $user->registeredAt()->format('Y-m-d') : null,
-            $user->imageUrl()
+            $user->avatar()
         );
     }
 
@@ -74,7 +74,7 @@ final class UserView
             'estado'     => $this->status,
             'estado_txt' => $this->statusLabel,
             'registro'   => $this->registeredAt,
-            'imagen_url' => $this->imageUrl,
+            'avatar'     => $this->avatar,
         ];
     }
 }

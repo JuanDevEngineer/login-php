@@ -70,7 +70,7 @@ src/
 │       │                    ListRolesDetailed
 │       └── User/            CreateUser, ListUsers, FindUser, UpdateUser,
 │                            ToggleUserStatus, ListRoles, ListUserNames,
-│                            ChangeProfileImage
+│                            ChangeProfileImage, RemoveProfileImage
 │
 ├── Infrastructure/          ← LOS ADAPTADORES
 │   ├── Persistence/Pdo/     PdoUserRepository, PdoRoleRepository
@@ -92,7 +92,8 @@ src/
 resources/views/
 ├── layouts/                 public.php, dashboard.php
 ├── partials/                navbar, sidebar, breadcrumb, formularios
-├── components/              card, input-group, modal, auth-card, data-table
+├── components/              card, input-group, modal, auth-card,
+│                            data-table, avatar
 ├── pages/                   auth/*, users/*, roles/*
 └── errors/                  404, 403, 419, 500, generic
 ```
@@ -120,7 +121,8 @@ acceso.
 | POST   | `/password/reset`     | público |
 | GET    | `/dashboard`          | auth    |
 | GET    | `/profile`            | auth    |
-| POST   | `/api/profile/image`  | auth    |
+| POST   | `/api/profile/image`        | auth    |
+| POST   | `/api/profile/image/delete` | auth    |
 | GET    | `/users`              | admin   |
 | POST   | `/api/users/create`   | admin   |
 | POST   | `/api/users/list`     | admin   |
@@ -163,6 +165,17 @@ Reglas:
   imprimen crudas a propósito.
 - El menú lateral se declara como array de datos y se pinta en un bucle.
 
+
+**Una trampa del renderizador.** `ViewRenderer` incluye cada plantilla dentro de
+una función cuyo ámbito solo contiene `$__path` y `$__vars`, y extrae los datos
+con `EXTR_OVERWRITE`. No es un capricho: antes el `include` ocurría en un método
+con locales llamados `$file`, `$data` y `$view`, y `extract(..., EXTR_SKIP)`
+descartaba **en silencio** cualquier dato de la vista que se llamara igual. Por
+eso `components/avatar.php`, que recibía un parámetro `$file`, terminaba usando
+la ruta de la propia plantilla como nombre de la foto y generaba
+`/assets/uploads/D:\laragon\...\avatar.php`. El verificador estático incluye
+ahora una comprobación de esas colisiones.
+
 ---
 
 ## Puesta en marcha
@@ -179,6 +192,7 @@ Si ya tenías la base con el esquema viejo:
 ```bash
 mysql -u root -p < database/migration-2.0.sql
 mysql -u root -p < database/migration-2.1.sql   # gestión de roles
+mysql -u root -p < database/migration-2.2.sql   # foto de perfil
 ```
 
 `migration-2.1.sql` incluye al final una consulta de comprobación: si tenés
@@ -265,6 +279,38 @@ roles distintos.
 
 ---
 
+## Foto de perfil
+
+En la base **solo se guarda el nombre del archivo** (`a3f1…c9.jpg`), nunca una
+URL. Antes se guardaba la URL absoluta, así que mover el proyecto o cambiar
+`BASE_URL` rompía todas las fotos ya subidas. La URL se arma al renderizar, en
+`resources/views/components/avatar.php`, que es el único sitio que sabe dónde
+viven los archivos.
+
+`migration-2.2.sql` convierte las filas existentes quedándose con lo que hay
+después de la última barra.
+
+**Ciclo de vida del archivo.** Cambiar la foto borra la anterior y quitarla
+borra la actual; si no, cada cambio dejaría un archivo muerto en
+`assets/uploads/`. Al quitarla se actualiza primero la base y después el disco:
+si fallara el borrado quedaría un huérfano, que es menos grave que una fila
+apuntando a un archivo inexistente.
+
+**Por qué no funcionaba antes.** El formulario usaba el `custom-file` de
+Bootstrap, cuyo `<label>` solo se actualiza si está cargado el plugin
+`bs-custom-file-input`, que no estaba. Elegías un archivo y no cambiaba nada en
+pantalla. Ahora el `<input type="file">` va oculto y la interfaz la maneja
+`public/js/profile.js`: vista previa, arrastrar y soltar, barra de progreso y
+sustitución de la imagen sin recargar.
+
+**Errores.** Cada código de `$_FILES['error']` tiene su mensaje. Y si el cuerpo
+supera `post_max_size`, PHP vacía `$_POST` y `$_FILES` enteros: el router lo
+detecta comparando `CONTENT_LENGTH` contra el límite y responde 413 explicando
+el tamaño, en vez del "token CSRF inválido" que salía antes y mandaba a buscar
+el problema al lugar equivocado.
+
+---
+
 ## Decisiones de seguridad
 
 | Riesgo | Cómo se aborda |
@@ -280,7 +326,8 @@ roles distintos.
 | Tokens de recuperación | Formato `selector:sha256(verificador):expira`. En base de datos solo queda el hash; vencen a los 30 min y son de un solo uso. |
 | Manipulación del reset | El formulario manda el token, no un id de usuario. El servidor revalida antes de escribir. |
 | Escalada de privilegios | El nivel de acceso está en la tabla de rutas. Cambiar la foto de otro exige ser admin. |
-| Uploads maliciosos | Tipo detectado con `finfo` + `getimagesize`, extensión desde whitelist por MIME real, nombre generado con `random_bytes`, y `.htaccess` que desactiva la ejecución en `assets/uploads/`. |
+| Uploads maliciosos | Tipo detectado con `finfo` + `getimagesize`, extensión desde whitelist por MIME real, nombre generado con `random_bytes`, y `.htaccess` que desactiva la ejecución en `assets/uploads/`. La validación del navegador es solo cortesía: el servidor la repite entera. |
+| Borrado fuera de sitio | `LocalImageStorage::delete()` pasa por `basename()` y confirma con `realpath()` que el destino sigue dentro de `assets/uploads` antes de desvincular nada. |
 | Fuga por errores | `display_errors` off salvo en desarrollo; los detalles van al log. |
 
 ---
